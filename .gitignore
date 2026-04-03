@@ -1,0 +1,5 @@
+output/ofertas_qf.csv
+__pycache__/
+.pytest_cache/
+*.pyc
+.venv/
