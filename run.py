@@ -66,7 +66,7 @@ def main() -> None:
     if OUTPUT_PATH.exists():
         total_antes = len(pd.read_csv(OUTPUT_PATH))
 
-    guardar_csv(consolidadas)
+    guardar_csv(consolidadas, OUTPUT_PATH)
 
     total_despues = len(pd.read_csv(OUTPUT_PATH))
     nuevas = total_despues - total_antes
