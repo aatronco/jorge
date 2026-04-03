@@ -2,14 +2,14 @@
 from abc import ABC, abstractmethod
 
 _RM_KEYWORDS = [
-    "metropolitana", "santiago", " rm", "rm ", "providencia",
+    "metropolitana", "santiago", ", rm", ", rm ", "(rm)", "providencia",
     "las condes", "ñuñoa", "maipú", "maipu", "la florida",
     "puente alto", "vitacura", "lo barnechea", "peñalolén", "penalolen",
     "macul", "san miguel", "estación central", "recoleta", "independencia",
     "quilicura", "pudahuel", "la pintana", "cerrillos", "el bosque",
     "san ramón", "la granja", "lo espejo", "pedro aguirre cerda",
     "san joaquín", "lo prado", "quinta normal", "cerro navia",
-    "renca", "huechuraba", "conchalí", "colina", "lampa", "til til",
+    "renca", "huechuraba", "conchalí", "colina", "lampa", "til til", "tiltil",
     "pirque", "san josé de maipo", "talagante", "peñaflor", "isla de maipo",
     "el monte", "padre hurtado", "calera de tango", "san bernardo",
     "buin", "paine", "melipilla",
@@ -25,7 +25,7 @@ def is_region_metropolitana(ubicacion) -> bool:
 
 
 class BaseScraper(ABC):
-    KEYWORDS = ["Químico Farmacéutico", "QF"]
+    KEYWORDS = ("Químico Farmacéutico", "QF")
 
     @abstractmethod
     def fetch(self) -> list[dict]:
@@ -49,5 +49,5 @@ class BaseScraper(ABC):
             "fecha_publicacion": fecha or "",
             "descripcion": descripcion or "",
             "url": url or "",
-            "fuente": fuente,
+            "fuente": fuente or "",
         }

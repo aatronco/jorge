@@ -43,6 +43,15 @@ def test_make_oferta_normaliza_none():
     assert oferta["fuente"] == "test"
 
 
+def test_make_oferta_normaliza_fuente_none():
+    class Concreto(BaseScraper):
+        def fetch(self):
+            return []
+    scraper = Concreto()
+    oferta = scraper._make_oferta(None, None, None, None, None, None, None)
+    assert oferta["fuente"] == ""
+
+
 def test_make_oferta_estructura_completa():
     class Concreto(BaseScraper):
         def fetch(self):
