@@ -37,7 +37,7 @@ class TrabajandoScraper(BaseScraper):
             if not is_region_metropolitana(ubicacion):
                 continue
             ofertas.append(
-                self._make_oferta(titulo, empresa, ubicacion, fecha, desc, url, "trabajando.com")
+                self._make_oferta(titulo, empresa, ubicacion, fecha, desc, url, "trabajando.cl")
             )
         return ofertas
 
@@ -50,7 +50,7 @@ class TrabajandoScraper(BaseScraper):
             try:
                 resp = requests.get(BASE_URL, params=params, headers=headers, timeout=15)
                 resp.raise_for_status()
-            except Exception as e:
+            except requests.RequestException as e:
                 print(f"[trabajando.com] Error al buscar '{keyword}': {e}")
                 continue
             ofertas.extend(self._parse_html(resp.text))

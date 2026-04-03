@@ -1,5 +1,6 @@
 from pathlib import Path
 from scrapers.trabajando import TrabajandoScraper
+import responses as responses_lib
 
 FIXTURE = (Path(__file__).parent / "fixtures" / "trabajando_sample.html").read_text(encoding="utf-8")
 
@@ -27,6 +28,23 @@ def test_parse_estructura_oferta():
     assert set(oferta.keys()) == {
         "titulo", "empresa", "ubicacion", "fecha_publicacion", "descripcion", "url", "fuente"
     }
-    assert oferta["fuente"] == "trabajando.com"
+    assert oferta["fuente"] == "trabajando.cl"
     assert oferta["url"].startswith("https://www.trabajando.cl")
     assert oferta["titulo"] == "Químico Farmacéutico Regente"
+
+
+@responses_lib.activate
+def test_fetch_hace_request_por_keyword():
+    from unittest.mock import patch
+    # Mock both keyword searches
+    responses_lib.add(responses_lib.GET, "https://www.trabajando.cl/trabajo/buscar",
+                      body=FIXTURE, status=200)
+    responses_lib.add(responses_lib.GET, "https://www.trabajando.cl/trabajo/buscar",
+                      body=FIXTURE, status=200)
+
+    with patch("scrapers.trabajando.time.sleep"):  # skip sleep in tests
+        scraper = TrabajandoScraper()
+        ofertas = scraper.fetch()
+
+    assert len(ofertas) >= 1
+    assert all(o["fuente"] == "trabajando.cl" for o in ofertas)
