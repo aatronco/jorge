@@ -51,20 +51,21 @@ class IndeedScraper(BaseScraper):
             print("[indeed.cl] playwright no instalado. Ejecutar: playwright install chromium")
             return []
 
+        from urllib.parse import urlencode
+
         ofertas = []
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
-            page = browser.new_page()
-            page.set_extra_http_headers({"Accept-Language": "es-CL,es;q=0.9"})
-            for keyword in self.KEYWORDS:
-                try:
-                    kw_encoded = keyword.replace(" ", "+")
-                    url = f"{BASE_URL}?q={kw_encoded}&l=Regi%C3%B3n+Metropolitana%2C+Chile"
-                    page.goto(url, timeout=20000)
-                    page.wait_for_selector(SEL_CARD, timeout=10000)
-                    html = page.content()
-                    ofertas.extend(self._parse_html(html))
-                except Exception as e:
-                    print(f"[indeed.cl] Error al buscar '{keyword}': {e}")
-            browser.close()
+            with p.chromium.launch(headless=True) as browser:
+                page = browser.new_page()
+                page.set_extra_http_headers({"Accept-Language": "es-CL,es;q=0.9"})
+                for keyword in self.KEYWORDS:
+                    try:
+                        params = urlencode({"q": keyword, "l": "Región Metropolitana, Chile"})
+                        url = f"{BASE_URL}?{params}"
+                        page.goto(url, timeout=20000)
+                        page.wait_for_selector(SEL_CARD, timeout=10000)
+                        html = page.content()
+                        ofertas.extend(self._parse_html(html))
+                    except Exception as e:
+                        print(f"[indeed.cl] {type(e).__name__} al buscar '{keyword}': {e}")
         return ofertas
