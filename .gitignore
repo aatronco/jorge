@@ -1,4 +1,4 @@
-output/ofertas_qf.csv
+# output/ofertas_qf.csv — incluido en repo para Streamlit Cloud
 __pycache__/
 .pytest_cache/
 *.pyc
