@@ -6,6 +6,9 @@ from scrapers.trabajando import TrabajandoScraper
 from scrapers.computrabajo import ComputrabajoScraper
 from scrapers.laborum import LaborumScraper
 from scrapers.indeed import IndeedScraper
+from scrapers.empleospublicos import EmpleosPublicosScraper
+from scrapers.ahumada import AhumadaScraper
+from scrapers.trabajando_portal import TrabajandoPortalScraper, PORTALES
 
 OUTPUT_PATH = Path("output/ofertas_qf.csv")
 
@@ -47,6 +50,9 @@ def main() -> None:
         ComputrabajoScraper(),
         LaborumScraper(),
         IndeedScraper(),
+        EmpleosPublicosScraper(),
+        AhumadaScraper(),
+        *[TrabajandoPortalScraper(base_url, fuente) for _, (base_url, fuente) in PORTALES.items()],
     ]
 
     resultados = []

@@ -3,15 +3,13 @@ from scrapers.base import BaseScraper, is_region_metropolitana
 
 BASE_URL = "https://cl.indeed.com/jobs"
 
-# Indeed cambia sus selectores frecuentemente.
-# Si devuelve 0 resultados, correr: playwright codegen cl.indeed.com
-# y buscar los elementos de las tarjetas de trabajo.
-SEL_CARD = "div.job_seen_beacon"
-SEL_TITULO = "h2.jobTitle span"
-SEL_TITULO_LINK = "h2.jobTitle a"
-SEL_EMPRESA = "span.companyName"
-SEL_UBICACION = "div.companyLocation"
-SEL_FECHA = "span.date"
+# Selectores verificados en HTML real con anti-detección (2026-04-03).
+# Indeed cambia selectores frecuentemente — re-verificar si vuelve a dar 0 resultados.
+SEL_CARD = "div.result"
+SEL_TITULO = "h2.jobTitle a"
+SEL_EMPRESA = "span[data-testid='company-name']"
+SEL_UBICACION = "div[data-testid='text-location']"
+SEL_FECHA = ""  # indeed.cl no muestra fecha en la vista de lista
 
 
 class IndeedScraper(BaseScraper):
@@ -20,11 +18,10 @@ class IndeedScraper(BaseScraper):
         ofertas = []
         for card in soup.select(SEL_CARD):
             titulo_tag = card.select_one(SEL_TITULO)
-            link_tag = card.select_one(SEL_TITULO_LINK)
             if not titulo_tag:
                 continue
             titulo = titulo_tag.get_text(strip=True)
-            href = link_tag.get("href", "") if link_tag else ""
+            href = titulo_tag.get("href", "")
             if href.startswith("/"):
                 url = f"https://cl.indeed.com{href}"
             elif href.startswith("http"):
@@ -35,7 +32,7 @@ class IndeedScraper(BaseScraper):
             empresa = empresa.get_text(strip=True) if empresa else ""
             ubicacion = card.select_one(SEL_UBICACION)
             ubicacion = ubicacion.get_text(strip=True) if ubicacion else ""
-            fecha = card.select_one(SEL_FECHA)
+            fecha = card.select_one(SEL_FECHA) if SEL_FECHA else None
             fecha = fecha.get_text(strip=True) if fecha else ""
             if not is_region_metropolitana(ubicacion):
                 continue
@@ -55,8 +52,18 @@ class IndeedScraper(BaseScraper):
 
         ofertas = []
         with sync_playwright() as p:
-            with p.chromium.launch(headless=True) as browser:
-                page = browser.new_page()
+            with p.chromium.launch(
+                headless=True,
+                args=["--disable-blink-features=AutomationControlled"],
+            ) as browser:
+                ctx = browser.new_context(
+                    viewport={"width": 1280, "height": 900},
+                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+                )
+                page = ctx.new_page()
+                page.add_init_script(
+                    "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
+                )
                 page.set_extra_http_headers({"Accept-Language": "es-CL,es;q=0.9"})
                 for keyword in self.KEYWORDS:
                     try:

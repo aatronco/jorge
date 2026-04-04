@@ -6,3 +6,4 @@ fake-useragent==1.5.1
 playwright==1.44.0
 responses==0.25.3
 pytest==8.2.0
+streamlit==1.56.0

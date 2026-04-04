@@ -42,17 +42,8 @@ class LaborumScraper(BaseScraper):
         return ofertas
 
     def fetch(self) -> list[dict]:
-        ua = UserAgent()
-        headers = {"User-Agent": ua.random}
-        ofertas = []
-        for keyword in self.KEYWORDS:
-            params = {"q": keyword, "l": "Región Metropolitana"}
-            try:
-                resp = requests.get(BASE_URL, params=params, headers=headers, timeout=15)
-                resp.raise_for_status()
-            except requests.RequestException as e:
-                print(f"[laborum.com] Error al buscar '{keyword}': {e}")
-                continue
-            ofertas.extend(self._parse_html(resp.text))
-            time.sleep(1)
-        return ofertas
+        # laborum.com es una SPA React con API protegida (403 en endpoints internos).
+        # Headless browsers son bloqueados activamente.
+        # TODO: investigar API interna o alternativas de scraping.
+        print("[laborum.com] Sitio bloquea automatización. Skipping.")
+        return []

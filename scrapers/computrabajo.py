@@ -4,12 +4,12 @@ from bs4 import BeautifulSoup
 from fake_useragent import UserAgent
 from scrapers.base import BaseScraper, is_region_metropolitana
 
-# Verificar en https://cl.computrabajo.com si los selectores cambian:
+# Selectores verificados en HTML real (2026-04-03):
 SEL_CARD = "article.box_offer"
 SEL_TITULO = "h2 a"
-SEL_EMPRESA = "p.it_co a"
-SEL_UBICACION = "p.it_localizacion span"
-SEL_FECHA = "p.fc_base span"
+SEL_EMPRESA = "p.dFlex"                   # párrafo con empresa (tiene clase dFlex)
+SEL_UBICACION = "span.mr10:not(.fx_none)" # span de ubicación (excluye el span de rating)
+SEL_FECHA = "p.fs13"                      # párrafo de fecha relativa
 
 KEYWORD_SLUGS = {
     "Químico Farmacéutico": "qu%C3%ADmico-farmac%C3%A9utico",
@@ -42,8 +42,10 @@ class ComputrabajoScraper(BaseScraper):
         return ofertas
 
     def fetch(self) -> list[dict]:
-        ua = UserAgent()
-        headers = {"User-Agent": ua.random}
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "Accept-Language": "es-CL,es;q=0.9",
+        }
         ofertas = []
         for keyword, slug in KEYWORD_SLUGS.items():
             url = f"https://cl.computrabajo.com/trabajo-de-{slug}"

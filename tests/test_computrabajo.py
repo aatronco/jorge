@@ -9,7 +9,8 @@ FIXTURE = (Path(__file__).parent / "fixtures" / "computrabajo_sample.html").read
 def test_parse_filtra_rm():
     scraper = ComputrabajoScraper()
     ofertas = scraper._parse_html(FIXTURE)
-    assert len(ofertas) == 1
+    # Fixture tiene 3 cards: 2 Santiago (RM), 1 Concepción (excluida)
+    assert len(ofertas) == 2
     assert "Bagó" in ofertas[0]["empresa"]
     assert "Santiago" in ofertas[0]["ubicacion"]
 

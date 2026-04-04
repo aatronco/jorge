@@ -1,6 +1,4 @@
-import responses as responses_lib
 from pathlib import Path
-from unittest.mock import patch
 from scrapers.laborum import LaborumScraper
 
 FIXTURE = (Path(__file__).parent / "fixtures" / "laborum_sample.html").read_text(encoding="utf-8")
@@ -32,13 +30,10 @@ def test_parse_estructura_oferta():
     assert "2026" in oferta["fecha_publicacion"]
 
 
-@responses_lib.activate
-def test_fetch_hace_request_por_keyword():
-    base_url = "https://www.laborum.com/empleos"
-    responses_lib.add(responses_lib.GET, base_url, body=FIXTURE, status=200)
-    responses_lib.add(responses_lib.GET, base_url, body=FIXTURE, status=200)
-    with patch("scrapers.laborum.time.sleep"):
-        scraper = LaborumScraper()
-        ofertas = scraper.fetch()
-    assert len(ofertas) >= 1
-    assert all(o["fuente"] == "laborum.com" for o in ofertas)
+def test_fetch_retorna_vacio_sitio_bloqueado(capsys):
+    # laborum.com bloquea automatización; fetch() retorna [] con mensaje
+    scraper = LaborumScraper()
+    ofertas = scraper.fetch()
+    assert ofertas == []
+    captured = capsys.readouterr()
+    assert "bloquea" in captured.out.lower() or "skip" in captured.out.lower()

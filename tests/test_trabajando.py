@@ -33,18 +33,10 @@ def test_parse_estructura_oferta():
     assert oferta["titulo"] == "Químico Farmacéutico Regente"
 
 
-@responses_lib.activate
-def test_fetch_hace_request_por_keyword():
-    from unittest.mock import patch
-    # Mock both keyword searches
-    responses_lib.add(responses_lib.GET, "https://www.trabajando.cl/trabajo/buscar",
-                      body=FIXTURE, status=200)
-    responses_lib.add(responses_lib.GET, "https://www.trabajando.cl/trabajo/buscar",
-                      body=FIXTURE, status=200)
-
-    with patch("scrapers.trabajando.time.sleep"):  # skip sleep in tests
-        scraper = TrabajandoScraper()
-        ofertas = scraper.fetch()
-
-    assert len(ofertas) >= 1
-    assert all(o["fuente"] == "trabajando.cl" for o in ofertas)
+def test_fetch_retorna_vacio_sitio_bloqueado(capsys):
+    # trabajando.cl bloquea automatización; fetch() retorna [] con mensaje
+    scraper = TrabajandoScraper()
+    ofertas = scraper.fetch()
+    assert ofertas == []
+    captured = capsys.readouterr()
+    assert "bloquea" in captured.out.lower() or "skip" in captured.out.lower()

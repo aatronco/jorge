@@ -42,17 +42,8 @@ class TrabajandoScraper(BaseScraper):
         return ofertas
 
     def fetch(self) -> list[dict]:
-        ua = UserAgent()
-        headers = {"User-Agent": ua.random}
-        ofertas = []
-        for keyword in self.KEYWORDS:
-            params = {"q": keyword, "r": REGION_PARAM}
-            try:
-                resp = requests.get(BASE_URL, params=params, headers=headers, timeout=15)
-                resp.raise_for_status()
-            except requests.RequestException as e:
-                print(f"[trabajando.com] Error al buscar '{keyword}': {e}")
-                continue
-            ofertas.extend(self._parse_html(resp.text))
-            time.sleep(1)
-        return ofertas
+        # trabajando.cl es una SPA Nuxt que bloquea headless browsers.
+        # El HTML estático no contiene datos de ofertas.
+        # TODO: investigar API interna o alternativas de scraping.
+        print("[trabajando.cl] Sitio bloquea automatización. Skipping.")
+        return []
