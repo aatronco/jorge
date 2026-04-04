@@ -1,9 +1,2 @@
-requests==2.31.0
-beautifulsoup4==4.12.3
-lxml==5.2.1
 pandas==2.2.2
-fake-useragent==1.5.1
-playwright==1.44.0
-responses==0.25.3
-pytest==8.2.0
 streamlit==1.56.0
