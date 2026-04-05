@@ -1,5 +1,8 @@
-# output/ofertas_qf.csv — incluido en repo para Streamlit Cloud
 __pycache__/
 .pytest_cache/
 *.pyc
 .venv/
+output/
+.env
+credentials.json
+service_account.json
