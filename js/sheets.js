@@ -52,7 +52,7 @@ async function request(url, options = {}) {
 }
 
 export async function validateSpreadsheet(id) {
-  const url = `${BASE}/${id}/values/${encodeURIComponent(SHEET + '!A1:H1')}`;
+  const url = `${BASE}/${id}`;
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${getToken()}` },
   });
