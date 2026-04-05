@@ -40,6 +40,33 @@ export async function renderJobs() {
         ? descartados.map(renderJobCard).join('')
         : emptyState('Sin ofertas descartadas.')}
     </div>
+
+    ${renderFuentesInfo()}
+  `;
+}
+
+function renderFuentesInfo() {
+  return `
+    <details class="fuentes-info">
+      <summary>Fuentes del scraper</summary>
+      <div class="fuentes-grid">
+        <div class="fuente-group">
+          <div class="fuente-group-title">Activas</div>
+          <div class="fuente-row"><span class="fuente-badge" data-fuente="indeed">indeed.cl</span><span>Playwright — puede ser lento o bloquearse ocasionalmente</span></div>
+          <div class="fuente-row"><span class="fuente-badge" data-fuente="computrabajo">computrabajo.cl</span><span>requests + BeautifulSoup</span></div>
+          <div class="fuente-row"><span class="fuente-badge" data-fuente="empleospublicos">empleospublicos.cl</span><span>requests + BeautifulSoup — sector público</span></div>
+          <div class="fuente-row"><span class="fuente-badge" data-fuente="ahumada">Farmacias Ahumada</span><span>requests + BeautifulSoup</span></div>
+          <div class="fuente-row"><span class="fuente-badge" data-fuente="trabajando">Clínica Alemana</span><span>Playwright — portal trabajando.com</span></div>
+          <div class="fuente-row"><span class="fuente-badge" data-fuente="trabajando">Bupa / RedSalud / Banmédica</span><span>Playwright — portal trabajando.com</span></div>
+          <div class="fuente-row"><span class="fuente-badge" data-fuente="trabajando">Colmena / Sta. María / Salcobrand</span><span>Playwright — portal trabajando.com</span></div>
+        </div>
+        <div class="fuente-group">
+          <div class="fuente-group-title">Bloqueadas</div>
+          <div class="fuente-row blocked"><span class="fuente-badge">trabajando.com</span><span>SPA con Nuxt — bloquea navegadores headless</span></div>
+          <div class="fuente-row blocked"><span class="fuente-badge">laborum.cl</span><span>SPA con React — API protegida, bloquea activamente</span></div>
+        </div>
+      </div>
+    </details>
   `;
 }
 
