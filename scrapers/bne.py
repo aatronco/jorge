@@ -2,19 +2,52 @@
 Scraper para Bolsa Nacional de Empleo (bne.cl)
 El sitio renderiza resultados vía JavaScript — requiere Playwright.
 
-Selectores verificados: pendiente verificación en HTML real.
-Si retorna 0 resultados, inspeccionar el DOM con DevTools y actualizar SEL_CARD.
+Selectores verificados en HTML real (2026-04-05).
 """
+from bs4 import BeautifulSoup
 from scrapers.base import BaseScraper, is_region_metropolitana
 
 BASE_URL = "https://www.bne.cl/ofertas"
-
-# Selector del contenedor de cada oferta — ajustar si el sitio cambia
-SEL_CARD = "div.oferta, li.oferta, article.oferta, div.card-oferta, div[class*='oferta']"
-SEL_LOADING_DONE = "div.oferta, li.oferta, article.oferta, div.card-oferta, div[class*='oferta'], div.sin-resultados, p.sin-resultados"
+SEL_CARD      = "article.resultadoOfertas"
+SEL_TITULO    = "div.tituloOferta a"
+SEL_EMPRESA   = "div.datosEmpresaOferta div:first-child"
+SEL_UBICACION = "div.datosEmpresaOferta div:last-child"
+SEL_FECHA     = "span.fechaOferta"
+SEL_DESC      = "div.descripcionOferta span"
 
 
 class BneScraper(BaseScraper):
+    def _parse_html(self, html: str) -> list[dict]:
+        soup = BeautifulSoup(html, "lxml")
+        ofertas = []
+        for card in soup.select(SEL_CARD):
+            titulo_tag = card.select_one(SEL_TITULO)
+            if not titulo_tag:
+                continue
+            titulo = titulo_tag.get_text(strip=True)
+            href = titulo_tag.get("href", "")
+            url = f"https://www.bne.cl{href}" if href.startswith("/") else href
+
+            empresa_tag = card.select_one(SEL_EMPRESA)
+            empresa = empresa_tag.get_text(strip=True) if empresa_tag else ""
+
+            ubicacion_tag = card.select_one(SEL_UBICACION)
+            ubicacion = ubicacion_tag.get_text(strip=True) if ubicacion_tag else ""
+
+            fecha_tag = card.select_one(SEL_FECHA)
+            fecha = fecha_tag.get_text(strip=True) if fecha_tag else ""
+
+            desc_tag = card.select_one(SEL_DESC)
+            descripcion = desc_tag.get_text(strip=True) if desc_tag else ""
+
+            if not is_region_metropolitana(ubicacion):
+                continue
+
+            ofertas.append(
+                self._make_oferta(titulo, empresa, ubicacion, fecha, descripcion, url, "bne.cl")
+            )
+        return ofertas
+
     def fetch(self) -> list[dict]:
         try:
             from playwright.sync_api import sync_playwright, TimeoutError as PWTimeout
@@ -44,74 +77,19 @@ class BneScraper(BaseScraper):
                     f"&textoLibre={keyword.replace(' ', '%20')}"
                     f"&numResultadosPorPagina=50"
                     f"&clasificarYPaginar=true"
-                    f"&codigoRegion=13"
                 )
                 try:
                     page.goto(url, timeout=25000)
                     page.wait_for_load_state("networkidle", timeout=15000)
-                    # Esperar hasta que aparezcan resultados o mensaje de sin resultados
                     try:
-                        page.wait_for_selector(SEL_LOADING_DONE, timeout=10000)
+                        page.wait_for_selector(SEL_CARD, timeout=10000)
                     except PWTimeout:
-                        pass
-
-                    # Extraer datos directamente del DOM renderizado
-                    results = page.evaluate("""() => {
-                        const jobs = [];
-                        // Intentar múltiples selectores comunes
-                        const selectors = [
-                            'div.oferta', 'li.oferta', 'article.oferta',
-                            'div.card-oferta', 'div[class*="oferta-item"]',
-                            'div[class*="job-card"]', 'div[class*="resultado"]',
-                            'li[class*="oferta"]', 'article[class*="oferta"]',
-                        ];
-                        let cards = [];
-                        for (const sel of selectors) {
-                            cards = document.querySelectorAll(sel);
-                            if (cards.length > 0) break;
-                        }
-                        cards.forEach(card => {
-                            // Título: primer h2, h3, h4 o elemento con clase título
-                            const titleEl = card.querySelector('h2, h3, h4, [class*="titulo"], [class*="title"], [class*="nombre-oferta"]');
-                            const title = titleEl ? titleEl.innerText.trim() : '';
-                            if (!title) return;
-                            // Link
-                            const linkEl = card.querySelector('a[href]');
-                            const href = linkEl ? linkEl.getAttribute('href') : '';
-                            const url = href.startsWith('http') ? href : 'https://www.bne.cl' + href;
-                            // Empresa
-                            const empresaEl = card.querySelector('[class*="empresa"], [class*="company"], [class*="razon-social"]');
-                            const empresa = empresaEl ? empresaEl.innerText.trim() : '';
-                            // Ubicación
-                            const ubicEl = card.querySelector('[class*="ubicacion"], [class*="region"], [class*="ciudad"], [class*="lugar"]');
-                            const ubicacion = ubicEl ? ubicEl.innerText.trim() : '';
-                            // Fecha
-                            const fechaEl = card.querySelector('[class*="fecha"], time, [class*="date"]');
-                            const fecha = fechaEl ? (fechaEl.getAttribute('datetime') || fechaEl.innerText.trim()) : '';
-                            jobs.push({ title, empresa, ubicacion, fecha, url });
-                        });
-                        return jobs;
-                    }""")
-
-                    for r in results:
-                        if not r.get("title"):
-                            continue
-                        if not is_region_metropolitana(r.get("ubicacion", "")):
-                            continue
-                        ofertas.append(self._make_oferta(
-                            r["title"],
-                            r.get("empresa", ""),
-                            r.get("ubicacion", ""),
-                            r.get("fecha", ""),
-                            "",
-                            r.get("url", ""),
-                            "bne.cl",
-                        ))
-
+                        print(f"[bne.cl] Sin resultados visibles para '{keyword}'")
+                        continue
+                    ofertas.extend(self._parse_html(page.content()))
                 except Exception as e:
                     print(f"[bne.cl] {type(e).__name__} al buscar '{keyword}': {e}")
 
             browser.close()
 
-        print(f"[bne.cl] {len(ofertas)} ofertas encontradas")
         return ofertas
