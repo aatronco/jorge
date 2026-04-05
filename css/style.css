@@ -119,6 +119,18 @@ body::after {
   cursor: default;
 }
 
+.btn-spinner {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border: 1.5px solid rgba(255,255,255,.3);
+  border-top-color: rgba(255,255,255,.9);
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+  vertical-align: middle;
+  margin-right: 2px;
+}
+
 /* ── Main container ──────────────────────────────────────────────────────── */
 
 #main { max-width: 860px; margin: 0 auto; padding: 28px 20px 72px; }

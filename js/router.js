@@ -23,7 +23,7 @@ export function renderNav() {
   document.getElementById('refresh-btn').addEventListener('click', async () => {
     const btn = document.getElementById('refresh-btn');
     btn.disabled = true;
-    btn.textContent = 'Iniciando...';
+    btn.innerHTML = '<span class="btn-spinner"></span> Iniciando…';
     const { triggerScraper } = await import('./github.js');
     const ok = await triggerScraper();
     if (ok) {
@@ -32,7 +32,7 @@ export function renderNav() {
       showNavToast('Error al iniciar el scraper. Verifica tu PAT.', true);
     }
     btn.disabled = false;
-    btn.textContent = '↻ Actualizar';
+    btn.innerHTML = '↻ Actualizar';
   });
 }
 
