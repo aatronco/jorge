@@ -436,6 +436,7 @@ body::after {
 .fuente-badge[data-fuente="laborum"]        { background: #eff6ff; color: #1e40af; border-color: #bfdbfe; }
 .fuente-badge[data-fuente="empleospublicos"]{ background: #faf5ff; color: #6b21a8; border-color: #e9d5ff; }
 .fuente-badge[data-fuente="ahumada"]        { background: #fff7ed; color: #9a3412; border-color: #fed7aa; }
+.fuente-badge[data-fuente="bne"]            { background: #f0f9ff; color: #075985; border-color: #bae6fd; }
 
 /* ── Estado actions ──────────────────────────────────────────────────────── */
 

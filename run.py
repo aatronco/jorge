@@ -5,6 +5,7 @@ from scrapers.indeed import IndeedScraper
 from scrapers.empleospublicos import EmpleosPublicosScraper
 from scrapers.ahumada import AhumadaScraper
 from scrapers.trabajando_portal import TrabajandoPortalScraper, PORTALES
+from scrapers.bne import BneScraper
 from sheets_writer import guardar_sheet
 
 
@@ -29,6 +30,7 @@ def main() -> None:
         IndeedScraper(),
         EmpleosPublicosScraper(),
         AhumadaScraper(),
+        BneScraper(),
         *[TrabajandoPortalScraper(base_url, fuente) for _, (base_url, fuente) in PORTALES.items()],
     ]
 

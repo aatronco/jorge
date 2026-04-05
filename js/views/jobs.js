@@ -56,6 +56,7 @@ function renderFuentesInfo() {
           <div class="fuente-row"><span class="fuente-badge" data-fuente="computrabajo">computrabajo.cl</span><span>requests + BeautifulSoup</span></div>
           <div class="fuente-row"><span class="fuente-badge" data-fuente="empleospublicos">empleospublicos.cl</span><span>requests + BeautifulSoup — sector público</span></div>
           <div class="fuente-row"><span class="fuente-badge" data-fuente="ahumada">Farmacias Ahumada</span><span>requests + BeautifulSoup</span></div>
+          <div class="fuente-row"><span class="fuente-badge" data-fuente="bne">bne.cl</span><span>Playwright — Bolsa Nacional de Empleo</span></div>
           <div class="fuente-row"><span class="fuente-badge" data-fuente="trabajando">Clínica Alemana</span><span>Playwright — portal trabajando.com</span></div>
           <div class="fuente-row"><span class="fuente-badge" data-fuente="trabajando">Bupa / RedSalud / Banmédica</span><span>Playwright — portal trabajando.com</span></div>
           <div class="fuente-row"><span class="fuente-badge" data-fuente="trabajando">Colmena / Sta. María / Salcobrand</span><span>Playwright — portal trabajando.com</span></div>
