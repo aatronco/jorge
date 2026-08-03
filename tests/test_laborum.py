@@ -25,14 +25,21 @@ def test_parse_estructura_oferta():
     assert set(oferta.keys()) == {
         "titulo", "empresa", "ubicacion", "fecha_publicacion", "descripcion", "url", "fuente"
     }
-    assert oferta["fuente"] == "laborum.com"
-    assert oferta["url"].startswith("https://www.laborum.com")
-    assert "2026" in oferta["fecha_publicacion"]
+    assert oferta["fuente"] == "laborum.cl"
+    assert oferta["url"].startswith("https://www.laborum.cl")
+    assert oferta["titulo"] == "Químico Farmacéutico"
+    assert oferta["fecha_publicacion"] == "Publicado hace 2 horas"
 
 
-def test_fetch_retorna_vacio_sitio_bloqueado(capsys):
+def test_fetch_retorna_vacio_sin_botasaurus(monkeypatch):
+    import builtins
+    real_import = builtins.__import__
+
+    def fake_import(name, *args, **kwargs):
+        if name == "botasaurus.browser" or name.startswith("botasaurus"):
+            raise ImportError("no module named botasaurus")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", fake_import)
     scraper = LaborumScraper(keywords=["Químico Farmacéutico"])
-    ofertas = scraper.fetch()
-    assert ofertas == []
-    captured = capsys.readouterr()
-    assert "bloquea" in captured.out.lower() or "skip" in captured.out.lower()
+    assert scraper.fetch() == []
