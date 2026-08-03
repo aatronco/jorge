@@ -2,6 +2,7 @@ requests==2.31.0
 beautifulsoup4==4.12.3
 lxml==5.2.1
 playwright==1.44.0
+botasaurus==4.0.97
 responses==0.25.3
 pytest==8.2.0
 PyYAML==6.0.1
