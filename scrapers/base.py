@@ -25,7 +25,8 @@ def is_region_metropolitana(ubicacion) -> bool:
 
 
 class BaseScraper(ABC):
-    KEYWORDS = ("Químico Farmacéutico", "QF")
+    def __init__(self, keywords: list[str]):
+        self.keywords = list(keywords)
 
     @abstractmethod
     def fetch(self) -> list[dict]:
@@ -51,3 +52,15 @@ class BaseScraper(ABC):
             "url": url or "",
             "fuente": fuente or "",
         }
+
+
+class KeywordSearchScraper(BaseScraper):
+    """Sitios que se buscan pasando una keyword como query (Computrabajo, Indeed, etc)."""
+
+
+class PortalListScraper(BaseScraper):
+    """Sitios con múltiples instituciones/sub-portales que comparten un mismo layout."""
+
+    def __init__(self, keywords: list[str], portales: list[dict]):
+        super().__init__(keywords)
+        self.portales = list(portales)
