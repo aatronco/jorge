@@ -1,3 +1,4 @@
+import copy
 import json
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -45,6 +46,12 @@ CV_EJEMPLO = {
     "skills": [{"name": "AutoCAD"}, {"name": "Revit"}],
 }
 
+OFERTA_EJEMPLO = {
+    "titulo": "Arquitecto de Aplicaciones", "empresa": "AFP Habitat", "ubicacion": "Providencia",
+    "descripcion": "Buscamos arquitecto senior con experiencia en sistemas de información.",
+    "url": "https://x.cl/1", "fuente": "laborum.cl",
+}
+
 
 def _mock_tool_use_response(payload: dict):
     block = MagicMock()
@@ -70,3 +77,47 @@ def test_importar_cv_llama_api_y_guarda(tmp_path, monkeypatch):
     call_kwargs = fake_client.messages.create.call_args.kwargs
     assert call_kwargs["model"] == cv.MODEL
     assert call_kwargs["tool_choice"]["name"] == call_kwargs["tools"][0]["name"]
+
+
+def test_tailorear_cv_no_muta_cv_base(monkeypatch):
+    fake_client = MagicMock()
+    fake_client.messages.create.return_value = _mock_tool_use_response(
+        {"orden_work": [1, 0], "orden_skills": [1, 0], "summary": "Resumen ajustado a esta oferta."}
+    )
+    monkeypatch.setattr(cv, "_client", lambda: fake_client)
+
+    original = copy.deepcopy(CV_EJEMPLO)
+    resultado = cv.tailorear_cv(CV_EJEMPLO, OFERTA_EJEMPLO)
+
+    assert CV_EJEMPLO == original  # cv_base intacto
+    assert resultado is not CV_EJEMPLO
+
+
+def test_tailorear_cv_reordena_y_preserva_cantidad(monkeypatch):
+    fake_client = MagicMock()
+    fake_client.messages.create.return_value = _mock_tool_use_response(
+        {"orden_work": [1, 0], "orden_skills": [1, 0], "summary": "Resumen ajustado a esta oferta."}
+    )
+    monkeypatch.setattr(cv, "_client", lambda: fake_client)
+
+    resultado = cv.tailorear_cv(CV_EJEMPLO, OFERTA_EJEMPLO)
+
+    assert len(resultado["work"]) == len(CV_EJEMPLO["work"])
+    assert len(resultado["skills"]) == len(CV_EJEMPLO["skills"])
+    assert resultado["work"][0]["name"] == "Estudio B"  # índice 1 primero
+    assert resultado["skills"][0]["name"] == "Revit"  # índice 1 primero
+    assert resultado["basics"]["summary"] == "Resumen ajustado a esta oferta."
+
+
+def test_tailorear_cv_incluye_datos_de_la_oferta_en_el_prompt(monkeypatch):
+    fake_client = MagicMock()
+    fake_client.messages.create.return_value = _mock_tool_use_response(
+        {"orden_work": [], "orden_skills": [], "summary": "x"}
+    )
+    monkeypatch.setattr(cv, "_client", lambda: fake_client)
+
+    cv.tailorear_cv(CV_EJEMPLO, OFERTA_EJEMPLO)
+
+    prompt = fake_client.messages.create.call_args.kwargs["messages"][0]["content"]
+    assert "Arquitecto de Aplicaciones" in prompt
+    assert "sistemas de información" in prompt

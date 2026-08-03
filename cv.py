@@ -135,3 +135,28 @@ def importar_cv(texto: str, perfil: str) -> dict:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(cv_data, ensure_ascii=False, indent=2), encoding="utf-8")
     return cv_data
+
+
+def tailorear_cv(cv_base: dict, oferta: dict) -> dict:
+    client = _client()
+    prompt = (
+        "Este es un CV en formato JSON Resume:\n\n"
+        + json.dumps(cv_base, ensure_ascii=False)
+        + "\n\nEsta es la oferta de trabajo a la que se quiere postular:\n\n"
+        f"Título: {oferta.get('titulo', '')}\n"
+        f"Empresa: {oferta.get('empresa', '')}\n"
+        f"Descripción: {oferta.get('descripcion', '')}\n\n"
+        "Indica el orden en que deberían aparecer las entradas de work y skills "
+        "(por índice, más relevante primero para esta oferta) y escribe un resumen "
+        "profesional nuevo adaptado a esta oferta. No inventes experiencia, fechas "
+        "ni logros que no estén en el CV original — solo reordena y resume."
+    )
+    resultado = _tool_call(
+        client, "tailorear_cv", "Prioriza secciones de un CV para una oferta específica.", TAILOR_SCHEMA, prompt
+    )
+
+    tailored = json.loads(json.dumps(cv_base))  # copia profunda, nunca muta cv_base
+    tailored["work"] = _aplicar_orden(tailored.get("work", []), resultado["orden_work"])
+    tailored["skills"] = _aplicar_orden(tailored.get("skills", []), resultado["orden_skills"])
+    tailored.setdefault("basics", {})["summary"] = resultado["summary"]
+    return tailored
