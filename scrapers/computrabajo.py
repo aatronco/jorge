@@ -1,8 +1,9 @@
 import time
+from urllib.parse import quote
 import requests
 from bs4 import BeautifulSoup
-from fake_useragent import UserAgent
-from scrapers.base import BaseScraper, is_region_metropolitana
+from scrapers.base import KeywordSearchScraper, is_region_metropolitana
+from scrapers.registry import register
 
 # Selectores verificados en HTML real (2026-04-03):
 SEL_CARD = "article.box_offer"
@@ -11,13 +12,9 @@ SEL_EMPRESA = "p.dFlex"                   # párrafo con empresa (tiene clase dF
 SEL_UBICACION = "span.mr10:not(.fx_none)" # span de ubicación (excluye el span de rating)
 SEL_FECHA = "p.fs13"                      # párrafo de fecha relativa
 
-KEYWORD_SLUGS = {
-    "Químico Farmacéutico": "qu%C3%ADmico-farmac%C3%A9utico",
-    "QF": "qf",
-}
 
-
-class ComputrabajoScraper(BaseScraper):
+@register("computrabajo")
+class ComputrabajoScraper(KeywordSearchScraper):
     def _parse_html(self, html: str) -> list[dict]:
         soup = BeautifulSoup(html, "lxml")
         ofertas = []
@@ -47,7 +44,8 @@ class ComputrabajoScraper(BaseScraper):
             "Accept-Language": "es-CL,es;q=0.9",
         }
         ofertas = []
-        for keyword, slug in KEYWORD_SLUGS.items():
+        for keyword in self.keywords:
+            slug = quote(keyword.lower().replace(" ", "-"))
             url = f"https://cl.computrabajo.com/trabajo-de-{slug}"
             params = {"where": "Región Metropolitana"}
             try:
