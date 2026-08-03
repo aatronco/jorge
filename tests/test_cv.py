@@ -93,6 +93,24 @@ def test_tailorear_cv_no_muta_cv_base(monkeypatch):
     assert resultado is not CV_EJEMPLO
 
 
+def test_tailorear_cv_no_comparte_referencias_anidadas(monkeypatch):
+    fake_client = MagicMock()
+    fake_client.messages.create.return_value = _mock_tool_use_response(
+        {"orden_work": [1, 0], "orden_skills": [1, 0], "summary": "Resumen ajustado a esta oferta."}
+    )
+    monkeypatch.setattr(cv, "_client", lambda: fake_client)
+
+    resultado = cv.tailorear_cv(CV_EJEMPLO, OFERTA_EJEMPLO)
+
+    # Mutar el resultado no debe afectar CV_EJEMPLO — si compartieran referencias
+    # anidadas (ej. una copia superficial), esta mutación se propagaría.
+    resultado["work"][0]["position"] = "MUTATED"
+    resultado["basics"]["summary"] = "MUTATED"
+    assert CV_EJEMPLO["work"][0]["position"] != "MUTATED"
+    assert CV_EJEMPLO["work"][1]["position"] != "MUTATED"
+    assert CV_EJEMPLO["basics"]["summary"] != "MUTATED"
+
+
 def test_tailorear_cv_reordena_y_preserva_cantidad(monkeypatch):
     fake_client = MagicMock()
     fake_client.messages.create.return_value = _mock_tool_use_response(
