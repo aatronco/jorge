@@ -1,7 +1,9 @@
 import time
+from urllib.parse import quote_plus
 import requests
 from bs4 import BeautifulSoup
-from scrapers.base import BaseScraper
+from scrapers.base import KeywordSearchScraper
+from scrapers.registry import register
 
 BASE_CONV = "https://www.empleospublicos.cl/pub/convocatorias/"
 SEARCH_URL = BASE_CONV + "convocatorias.aspx"
@@ -13,15 +15,9 @@ SEL_FECHA  = "#bx_resumen em"
 SEL_DESC   = "#bx_resumen"
 SEL_URL    = "a.btnverficha"
 
-KEYWORDS_QF = ["químico", "farmacéutico", "q.f.", "regente", "bioquímico"]
 
-SEARCH_TERMS = [
-    "qu%C3%ADmico+farmac%C3%A9utico",
-    "farmac%C3%A9utico+regente",
-]
-
-
-class EmpleosPublicosScraper(BaseScraper):
+@register("empleospublicos")
+class EmpleosPublicosScraper(KeywordSearchScraper):
     def _parse_html(self, html: str) -> list[dict]:
         soup = BeautifulSoup(html, "lxml")
         ofertas = []
@@ -31,8 +27,7 @@ class EmpleosPublicosScraper(BaseScraper):
             if not titulo_el:
                 continue
             titulo = titulo_el.get_text(strip=True)
-            # Filtrar por keyword QF en el título
-            if not any(kw in titulo.lower() for kw in KEYWORDS_QF):
+            if not any(kw.lower() in titulo.lower() for kw in self.keywords):
                 continue
             empresa_el = card.select_one(SEL_EMPRESA)
             empresa = empresa_el.get_text(strip=True) if empresa_el else ""
@@ -50,7 +45,7 @@ class EmpleosPublicosScraper(BaseScraper):
             if url in seen_urls:
                 continue
             seen_urls.add(url)
-            # ubicacion vacío → is_region_metropolitana devuelve True (incluir todos los empleos públicos QF)
+            # ubicacion vacío → is_region_metropolitana devuelve True (incluir todos los empleos públicos)
             ofertas.append(
                 self._make_oferta(titulo, empresa, "", fecha, desc, url, "empleospublicos.cl")
             )
@@ -63,13 +58,14 @@ class EmpleosPublicosScraper(BaseScraper):
         }
         all_offers: list[dict] = []
         seen_urls: set[str] = set()
-        for term in SEARCH_TERMS:
+        for keyword in self.keywords:
+            term = quote_plus(keyword.lower())
             url = f"{SEARCH_URL}?busqueda={term}"
             try:
                 resp = requests.get(url, headers=headers, timeout=20)
                 resp.raise_for_status()
             except requests.RequestException as e:
-                print(f"[empleospublicos.cl] Error al buscar '{term}': {e}")
+                print(f"[empleospublicos.cl] Error al buscar '{keyword}': {e}")
                 continue
             for oferta in self._parse_html(resp.text):
                 if oferta["url"] not in seen_urls:
