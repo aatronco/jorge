@@ -1,4 +1,6 @@
+import hashlib
 import json
+import subprocess
 from pathlib import Path
 
 import anthropic
@@ -160,3 +162,23 @@ def tailorear_cv(cv_base: dict, oferta: dict) -> dict:
     tailored["skills"] = _aplicar_orden(tailored.get("skills", []), resultado["orden_skills"])
     tailored.setdefault("basics", {})["summary"] = resultado["summary"]
     return tailored
+
+
+def id_oferta(url: str) -> str:
+    return hashlib.sha256(url.encode("utf-8")).hexdigest()[:12]
+
+
+def renderizar_cv(json_path: Path, output_path: Path) -> None:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        subprocess.run(
+            ["resumed", "export", str(json_path), "-o", str(output_path), "-t", "jsonresume-theme-even"],
+            check=True,
+            capture_output=True,
+        )
+    except FileNotFoundError:
+        raise RuntimeError(
+            "'resumed' no está instalado. Ejecutar: npm install -g resumed jsonresume-theme-even"
+        )
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"resumed falló al exportar el PDF: {e}")

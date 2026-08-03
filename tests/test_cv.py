@@ -1,7 +1,10 @@
 import copy
 import json
+import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock
+
+import pytest
 
 import cv
 
@@ -139,3 +142,54 @@ def test_tailorear_cv_incluye_datos_de_la_oferta_en_el_prompt(monkeypatch):
     prompt = fake_client.messages.create.call_args.kwargs["messages"][0]["content"]
     assert "Arquitecto de Aplicaciones" in prompt
     assert "sistemas de información" in prompt
+
+
+def test_id_oferta_es_estable_y_corto():
+    a = cv.id_oferta("https://x.cl/empleo/1")
+    b = cv.id_oferta("https://x.cl/empleo/1")
+    c = cv.id_oferta("https://x.cl/empleo/2")
+    assert a == b
+    assert a != c
+    assert len(a) == 12
+
+
+def test_renderizar_cv_llama_resumed_con_argumentos_correctos(tmp_path, monkeypatch):
+    calls = []
+
+    def fake_run(args, **kwargs):
+        calls.append(args)
+        return subprocess.CompletedProcess(args, 0)
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    json_path = tmp_path / "cv.json"
+    output_path = tmp_path / "sub" / "cv.pdf"
+
+    cv.renderizar_cv(json_path, output_path)
+
+    assert len(calls) == 1
+    args = calls[0]
+    assert args[:2] == ["resumed", "export"]
+    assert str(json_path) in args
+    assert str(output_path) in args
+    assert "-t" in args and "jsonresume-theme-even" in args
+    assert output_path.parent.exists()  # se crea el directorio destino
+
+
+def test_renderizar_cv_error_claro_si_resumed_no_instalado(tmp_path, monkeypatch):
+    def fake_run(args, **kwargs):
+        raise FileNotFoundError("no such file: resumed")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    with pytest.raises(RuntimeError, match="npm install -g resumed"):
+        cv.renderizar_cv(tmp_path / "cv.json", tmp_path / "cv.pdf")
+
+
+def test_renderizar_cv_error_si_resumed_falla(tmp_path, monkeypatch):
+    def fake_run(args, **kwargs):
+        raise subprocess.CalledProcessError(1, args, stderr=b"theme not found")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    with pytest.raises(RuntimeError):
+        cv.renderizar_cv(tmp_path / "cv.json", tmp_path / "cv.pdf")
