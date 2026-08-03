@@ -35,7 +35,8 @@ class LaborumScraper(KeywordSearchScraper):
             ubicacion = ubicacion_el.get_text(strip=True) if ubicacion_el else ""
             if not is_region_metropolitana(ubicacion):
                 continue
-            url = card.get("href", "")
+            href = card.get("href", "")
+            url = f"https://www.laborum.cl{href}" if href.startswith("/") else href
             ofertas.append(
                 self._make_oferta(titulo, empresa, ubicacion, fecha, "", url, "laborum.cl")
             )
@@ -43,7 +44,7 @@ class LaborumScraper(KeywordSearchScraper):
 
     def fetch(self) -> list[dict]:
         try:
-            from botasaurus.browser import browser, Driver
+            from botasaurus.browser import browser, Driver, Wait
         except ImportError:
             print("[laborum.cl] botasaurus no instalado. Ejecutar: pip install botasaurus")
             return []
@@ -58,6 +59,13 @@ class LaborumScraper(KeywordSearchScraper):
             # confirmada en headers de respuesta) — bypass_cloudflare=True es la
             # estrategia documentada de Botasaurus para este caso específico.
             driver.google_get(url, bypass_cloudflare=True)
+            # google_get() retorna apenas el DOM inicial carga — el listado de
+            # ofertas se rellena después vía fetch async del lado del cliente
+            # (verificado en vivo: sin este wait, page_html trae "Buscando
+            # ofertas de empleo", la pantalla de carga, en vez de resultados
+            # reales). Si no hay resultados para la keyword, esto lanza
+            # TimeoutError y el caller lo trata como "sin ofertas".
+            driver.wait_for_element(SEL_HEADER, wait=Wait.VERY_LONG)
             return driver.page_html
 
         ofertas = []

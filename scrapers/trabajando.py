@@ -43,7 +43,7 @@ class TrabajandoScraper(KeywordSearchScraper):
 
     def fetch(self) -> list[dict]:
         try:
-            from botasaurus.browser import browser, Driver
+            from botasaurus.browser import browser, Driver, Wait
         except ImportError:
             print("[trabajando.cl] botasaurus no instalado. Ejecutar: pip install botasaurus")
             return []
@@ -53,9 +53,13 @@ class TrabajandoScraper(KeywordSearchScraper):
             # trabajando.cl está detrás de Akamai, no Cloudflare — bypass_cloudflare=True
             # no aplica aquí. google_get() sin ese flag ya usa el "Humane Driver" de
             # Botasaurus (fingerprint no detectable + referrer de Google), que es la
-            # estrategia general de la librería contra bot-management. Sin verificar
-            # en vivo si esto basta contra Akamai específicamente.
+            # estrategia general de la librería contra bot-management.
             driver.google_get(url)
+            # Igual que laborum.cl: el listado se rellena vía fetch async del
+            # cliente después de la carga inicial. Verificado en vivo: sin este
+            # wait, la corrida es intermitente (a veces trae el listado, a veces
+            # trae la página todavía sin resultados renderizados).
+            driver.wait_for_element(SEL_CARD, wait=Wait.VERY_LONG)
             return driver.page_html
 
         ofertas = []
