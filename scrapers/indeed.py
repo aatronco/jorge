@@ -1,5 +1,6 @@
 from bs4 import BeautifulSoup
-from scrapers.base import BaseScraper, is_region_metropolitana
+from scrapers.base import KeywordSearchScraper, is_region_metropolitana
+from scrapers.registry import register
 
 BASE_URL = "https://cl.indeed.com/jobs"
 
@@ -12,7 +13,8 @@ SEL_UBICACION = "div[data-testid='text-location']"
 SEL_FECHA = ""  # indeed.cl no muestra fecha en la vista de lista
 
 
-class IndeedScraper(BaseScraper):
+@register("indeed")
+class IndeedScraper(KeywordSearchScraper):
     def _parse_html(self, html: str) -> list[dict]:
         soup = BeautifulSoup(html, "lxml")
         ofertas = []
@@ -65,7 +67,7 @@ class IndeedScraper(BaseScraper):
                     "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
                 )
                 page.set_extra_http_headers({"Accept-Language": "es-CL,es;q=0.9"})
-                for keyword in self.KEYWORDS:
+                for keyword in self.keywords:
                     try:
                         params = urlencode({"q": keyword, "l": "Región Metropolitana, Chile"})
                         url = f"{BASE_URL}?{params}"
