@@ -21,7 +21,7 @@ Esta etapa agrega: importar el CV real de la persona una sola vez (estructurado 
 - **Formato estándar:** el schema abierto [JSON Resume](https://jsonresume.org/) (`basics`, `work`, `education`, `skills`, etc.) — no un YAML propio. Es un estándar externo, bien documentado, con herramientas de render ya construidas alrededor.
 - **Backend de IA:** integración real contra la API de Anthropic (paquete `anthropic`, variable de entorno `ANTHROPIC_API_KEY`) — no un flujo manual de copiar/pegar a un chat.
 - **Alcance del ajuste por oferta:** la IA NO reescribe descripciones de experiencia ni inventa contenido. Solo (a) reordena/prioriza qué entradas de `work[]`/`skills[]` destacar primero, y (b) escribe un `basics.summary` nuevo específico para esa oferta. Cero riesgo de que la IA tergiverse logros o fechas reales.
-- **Render final:** se integra con [`resumed`](https://github.com/rbardini/resumed) (CLI de Node.js para JSON Resume, MIT) + un theme (`jsonresume-theme-even`) para exportar a PDF. Esto es un prerequisito de sistema nuevo (Node.js + `npm install -g resumed jsonresume-theme-even`), no instalable vía pip — se documenta y se verifica en runtime con un mensaje de error claro si falta, mismo patrón que ya usa el proyecto para dependencias opcionales (`playwright`, `botasaurus`).
+- **Render final:** se integra con [`resumed`](https://github.com/rbardini/resumed) (CLI de Node.js para JSON Resume, MIT) + un theme (`jsonresume-theme-even`) para exportar a PDF. Esto es un prerequisito de sistema nuevo (Node.js + `npm install -g resumed jsonresume-theme-even puppeteer`), no instalable vía pip — se documenta y se verifica en runtime con un mensaje de error claro si falta, mismo patrón que ya usa el proyecto para dependencias opcionales (`playwright`, `botasaurus`).
 - **Forma del comando:** un solo comando hace tailoring + render (no dos pasos separados) — más simple para el usuario final. El JSON intermedio (ya ajustado) igual se guarda en disco como side-effect, para poder inspeccionarlo/editarlo a mano si algo sale raro, sin que sea un paso obligatorio del flujo normal.
 
 ---
@@ -92,7 +92,7 @@ python cli.py cv tailor --profile arquitecto <url-de-la-oferta>
 - CV base no importado aún → error claro, sugiere correr `cv import` primero.
 - Oferta no encontrada por URL en storage → error claro, no se llama a la IA (evita gasto innecesario de tokens).
 - Respuesta de Claude que no matchea el schema esperado (tool use con schema inválido) → error explícito, no se guarda un JSON corrupto ni se intenta renderizar.
-- `resumed` no instalado o no encontrado en el PATH → mensaje con el comando de instalación exacto (`npm install -g resumed jsonresume-theme-even`), no un traceback crudo.
+- `resumed` no instalado o no encontrado en el PATH → mensaje con el comando de instalación exacto (`npm install -g resumed jsonresume-theme-even puppeteer`), no un traceback crudo.
 - Error de red/API de Anthropic → se loggea y se aborta ese comando (no hay fallback silencioso — a diferencia de los scrapers, aquí un fallo debe ser visible, no ocultarse como "0 resultados").
 
 ---
@@ -110,7 +110,7 @@ python cli.py cv tailor --profile arquitecto <url-de-la-oferta>
 
 ```bash
 pip install anthropic          # se agrega a requirements-scraper.txt
-npm install -g resumed jsonresume-theme-even   # prerequisito de sistema, no vía pip
+npm install -g resumed jsonresume-theme-even puppeteer   # prerequisito de sistema, no vía pip
 
 export ANTHROPIC_API_KEY=sk-...
 

@@ -71,6 +71,17 @@ def test_cv_import_llama_a_cv_importar_cv(tmp_path, monkeypatch):
     assert args[1] == "arquitecto"
 
 
+def test_cv_import_archivo_inexistente_retorna_error_claro(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+
+    exit_code = cli.main(["cv", "import", "no-existe.txt", "--profile", "arquitecto"])
+
+    assert exit_code == 1
+    out = capsys.readouterr().out
+    assert "No se pudo leer" in out
+    assert "Traceback" not in out
+
+
 def test_cv_tailor_sin_cv_importado_retorna_error(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     tailorear_mock = MagicMock()

@@ -181,7 +181,7 @@ def test_renderizar_cv_error_claro_si_resumed_no_instalado(tmp_path, monkeypatch
 
     monkeypatch.setattr(subprocess, "run", fake_run)
 
-    with pytest.raises(RuntimeError, match="npm install -g resumed"):
+    with pytest.raises(RuntimeError, match="npm install -g resumed jsonresume-theme-even puppeteer"):
         cv.renderizar_cv(tmp_path / "cv.json", tmp_path / "cv.pdf")
 
 
@@ -191,5 +191,29 @@ def test_renderizar_cv_error_si_resumed_falla(tmp_path, monkeypatch):
 
     monkeypatch.setattr(subprocess, "run", fake_run)
 
-    with pytest.raises(RuntimeError):
+    with pytest.raises(RuntimeError, match="theme not found"):
         cv.renderizar_cv(tmp_path / "cv.json", tmp_path / "cv.pdf")
+
+
+def test_tool_call_lanza_error_si_respuesta_truncada(monkeypatch):
+    fake_client = MagicMock()
+    response = MagicMock()
+    response.stop_reason = "max_tokens"
+    response.content = []
+    fake_client.messages.create.return_value = response
+
+    with pytest.raises(ValueError, match="max_tokens"):
+        cv._tool_call(fake_client, "tool", "desc", {"type": "object"}, "prompt")
+
+
+def test_importar_cv_rechaza_respuesta_incompleta(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    incompleta = {k: v for k, v in CV_EJEMPLO.items() if k != "work"}
+    fake_client = MagicMock()
+    fake_client.messages.create.return_value = _mock_tool_use_response(incompleta)
+    monkeypatch.setattr(cv, "_client", lambda: fake_client)
+
+    with pytest.raises(ValueError, match="work"):
+        cv.importar_cv("Jorge Pérez, arquitecto...", "arquitecto")
+
+    assert not (tmp_path / "data" / "arquitecto-cv.json").exists()

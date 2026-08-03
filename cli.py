@@ -57,7 +57,11 @@ def cmd_mark(args) -> int:
 
 
 def cmd_cv_import(args) -> int:
-    texto = Path(args.archivo).read_text(encoding="utf-8")
+    try:
+        texto = Path(args.archivo).read_text(encoding="utf-8")
+    except (FileNotFoundError, UnicodeDecodeError, OSError) as e:
+        console.print(f"[bold red]No se pudo leer el archivo {args.archivo!r}: {e}[/bold red]")
+        return 1
     try:
         cv.importar_cv(texto, args.profile)
     except Exception as e:

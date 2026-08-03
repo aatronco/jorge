@@ -95,11 +95,16 @@ def _client() -> anthropic.Anthropic:
 def _tool_call(client, tool_name: str, tool_description: str, schema: dict, prompt: str) -> dict:
     response = client.messages.create(
         model=MODEL,
-        max_tokens=4096,
+        max_tokens=16000,
         tools=[{"name": tool_name, "description": tool_description, "input_schema": schema}],
         tool_choice={"type": "tool", "name": tool_name},
         messages=[{"role": "user", "content": prompt}],
     )
+    if response.stop_reason == "max_tokens":
+        raise ValueError(
+            "Claude no terminó la respuesta (truncada por max_tokens) — el CV/oferta "
+            "puede ser demasiado largo para procesar en una sola llamada."
+        )
     for block in response.content:
         if block.type == "tool_use":
             return block.input
@@ -133,6 +138,11 @@ def importar_cv(texto: str, perfil: str) -> dict:
     cv_data = _tool_call(
         client, "estructurar_cv", "Estructura un CV en formato JSON Resume.", CV_SCHEMA, prompt
     )
+    faltantes = [clave for clave in CV_SCHEMA["required"] if clave not in cv_data]
+    if faltantes:
+        raise ValueError(
+            f"La respuesta de Claude no tiene el formato esperado — faltan las claves: {faltantes}"
+        )
     path = Path("data") / f"{perfil}-cv.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(cv_data, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -178,7 +188,8 @@ def renderizar_cv(json_path: Path, output_path: Path) -> None:
         )
     except FileNotFoundError:
         raise RuntimeError(
-            "'resumed' no está instalado. Ejecutar: npm install -g resumed jsonresume-theme-even"
+            "'resumed' no está instalado. Ejecutar: npm install -g resumed jsonresume-theme-even puppeteer"
         )
     except subprocess.CalledProcessError as e:
-        raise RuntimeError(f"resumed falló al exportar el PDF: {e}")
+        detalle = e.stderr.decode(errors="replace") if e.stderr else str(e)
+        raise RuntimeError(f"resumed falló al exportar el PDF: {detalle}")
