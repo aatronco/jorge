@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+
 import anthropic
 
 MODEL = "claude-sonnet-5"
@@ -116,3 +119,19 @@ def _aplicar_orden(items: list, orden: list) -> list:
         if i not in vistos:
             resultado.append(items[i])
     return resultado
+
+
+def importar_cv(texto: str, perfil: str) -> dict:
+    client = _client()
+    prompt = (
+        "Estructura el siguiente CV en el formato JSON Resume estándar "
+        "(basics, work, education, skills). No inventes información que no esté "
+        "en el texto original.\n\n---\n\n" + texto
+    )
+    cv_data = _tool_call(
+        client, "estructurar_cv", "Estructura un CV en formato JSON Resume.", CV_SCHEMA, prompt
+    )
+    path = Path("data") / f"{perfil}-cv.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(cv_data, ensure_ascii=False, indent=2), encoding="utf-8")
+    return cv_data
