@@ -1,6 +1,5 @@
-import pandas as pd
-from pathlib import Path
-from run import consolidar, guardar_csv, COLUMNAS
+import pytest
+from run import consolidar, cargar_perfil, construir_scrapers
 
 OFERTA_SANTIAGO = {
     "titulo": "QF Regente", "empresa": "Farmacia X", "ubicacion": "Santiago",
@@ -30,33 +29,37 @@ def test_consolidar_listas_vacias():
     assert consolidar([[], []]) == []
 
 
-def test_guardar_csv_crea_archivo(tmp_path):
-    csv_path = tmp_path / "test.csv"
-    guardar_csv([OFERTA_SANTIAGO, OFERTA_CONDES], csv_path)
-    assert csv_path.exists()
-    df = pd.read_csv(csv_path)
-    assert list(df.columns) == COLUMNAS
-    assert len(df) == 2
+def test_cargar_perfil_lee_yaml(tmp_path, monkeypatch):
+    perfiles_dir = tmp_path / "profiles"
+    perfiles_dir.mkdir()
+    (perfiles_dir / "test.yaml").write_text(
+        "nombre: test\nkeywords:\n  - Test\nscrapers:\n  - computrabajo\n", encoding="utf-8"
+    )
+    monkeypatch.setattr("run.PROFILES_DIR", perfiles_dir)
+    perfil = cargar_perfil("test")
+    assert perfil == {"nombre": "test", "keywords": ["Test"], "scrapers": ["computrabajo"]}
 
 
-def test_guardar_csv_acumula_sin_duplicar(tmp_path):
-    csv_path = tmp_path / "test.csv"
-    guardar_csv([OFERTA_SANTIAGO], csv_path)
-    guardar_csv([OFERTA_CONDES], csv_path)
-    df = pd.read_csv(csv_path)
-    assert len(df) == 2
+def test_cargar_perfil_inexistente_lanza_filenotfound(tmp_path, monkeypatch):
+    monkeypatch.setattr("run.PROFILES_DIR", tmp_path)
+    with pytest.raises(FileNotFoundError):
+        cargar_perfil("no-existe")
 
 
-def test_guardar_csv_no_duplica_misma_url(tmp_path):
-    csv_path = tmp_path / "test.csv"
-    guardar_csv([OFERTA_SANTIAGO], csv_path)
-    guardar_csv([OFERTA_SANTIAGO], csv_path)
-    df = pd.read_csv(csv_path)
-    assert len(df) == 1
+def test_construir_scrapers_instancia_por_nombre():
+    perfil = {"keywords": ["Arquitecto"], "scrapers": ["computrabajo", "indeed"]}
+    instancias = construir_scrapers(perfil)
+    assert len(instancias) == 2
+    assert all(i.keywords == ["Arquitecto"] for i in instancias)
 
 
-def test_guardar_csv_columnas_ordenadas(tmp_path):
-    csv_path = tmp_path / "test.csv"
-    guardar_csv([OFERTA_SANTIAGO], csv_path)
-    df = pd.read_csv(csv_path)
-    assert list(df.columns) == COLUMNAS
+def test_construir_scrapers_portal_list_con_config():
+    perfil = {
+        "keywords": ["QF"],
+        "scrapers": [
+            {"portal_list": {"portales": [{"nombre": "x", "base_url": "https://x.cl", "fuente": "x.cl"}]}}
+        ],
+    }
+    instancias = construir_scrapers(perfil)
+    assert len(instancias) == 1
+    assert instancias[0].portales == [{"nombre": "x", "base_url": "https://x.cl", "fuente": "x.cl"}]
