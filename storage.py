@@ -65,6 +65,15 @@ def listar(path, estado: str | None = None) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+def obtener_por_url(path, url: str) -> dict | None:
+    init_db(path)
+    conn = sqlite3.connect(path)
+    conn.row_factory = sqlite3.Row
+    row = conn.execute("SELECT * FROM ofertas WHERE url = ?", (url,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
 def marcar(path, url: str, estado: str) -> bool:
     if estado not in ESTADOS_VALIDOS:
         raise ValueError(f"Estado inválido: {estado!r}. Válidos: {sorted(ESTADOS_VALIDOS)}")
