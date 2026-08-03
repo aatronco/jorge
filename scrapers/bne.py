@@ -5,7 +5,8 @@ El sitio renderiza resultados vía JavaScript — requiere Playwright.
 Selectores verificados en HTML real (2026-04-05).
 """
 from bs4 import BeautifulSoup
-from scrapers.base import BaseScraper, is_region_metropolitana
+from scrapers.base import KeywordSearchScraper, is_region_metropolitana
+from scrapers.registry import register
 
 BASE_URL = "https://www.bne.cl/ofertas"
 SEL_CARD      = "article.resultadoOfertas"
@@ -16,7 +17,8 @@ SEL_FECHA     = "span.fechaOferta"
 SEL_DESC      = "div.descripcionOferta span"
 
 
-class BneScraper(BaseScraper):
+@register("bne")
+class BneScraper(KeywordSearchScraper):
     def _parse_html(self, html: str) -> list[dict]:
         soup = BeautifulSoup(html, "lxml")
         ofertas = []
@@ -71,7 +73,7 @@ class BneScraper(BaseScraper):
             )
             page.set_extra_http_headers({"Accept-Language": "es-CL,es;q=0.9"})
 
-            for keyword in self.KEYWORDS:
+            for keyword in self.keywords:
                 url = (
                     f"{BASE_URL}?mostrar=empleo"
                     f"&textoLibre={keyword.replace(' ', '%20')}"

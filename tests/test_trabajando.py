@@ -1,12 +1,11 @@
 from pathlib import Path
 from scrapers.trabajando import TrabajandoScraper
-import responses as responses_lib
 
 FIXTURE = (Path(__file__).parent / "fixtures" / "trabajando_sample.html").read_text(encoding="utf-8")
 
 
 def test_parse_filtra_rm():
-    scraper = TrabajandoScraper()
+    scraper = TrabajandoScraper(keywords=["Químico Farmacéutico"])
     ofertas = scraper._parse_html(FIXTURE)
     assert len(ofertas) == 1
     assert "Farmacia Chile" in ofertas[0]["empresa"]
@@ -14,14 +13,14 @@ def test_parse_filtra_rm():
 
 
 def test_parse_excluye_fuera_rm():
-    scraper = TrabajandoScraper()
+    scraper = TrabajandoScraper(keywords=["Químico Farmacéutico"])
     ofertas = scraper._parse_html(FIXTURE)
     ubicaciones = [o["ubicacion"] for o in ofertas]
     assert not any("Valparaíso" in u for u in ubicaciones)
 
 
 def test_parse_estructura_oferta():
-    scraper = TrabajandoScraper()
+    scraper = TrabajandoScraper(keywords=["Químico Farmacéutico"])
     ofertas = scraper._parse_html(FIXTURE)
     assert len(ofertas) > 0
     oferta = ofertas[0]
@@ -33,10 +32,15 @@ def test_parse_estructura_oferta():
     assert oferta["titulo"] == "Químico Farmacéutico Regente"
 
 
-def test_fetch_retorna_vacio_sitio_bloqueado(capsys):
-    # trabajando.cl bloquea automatización; fetch() retorna [] con mensaje
-    scraper = TrabajandoScraper()
-    ofertas = scraper.fetch()
-    assert ofertas == []
-    captured = capsys.readouterr()
-    assert "bloquea" in captured.out.lower() or "skip" in captured.out.lower()
+def test_fetch_retorna_vacio_sin_botasaurus(monkeypatch):
+    import builtins
+    real_import = builtins.__import__
+
+    def fake_import(name, *args, **kwargs):
+        if name == "botasaurus.browser" or name.startswith("botasaurus"):
+            raise ImportError("no module named botasaurus")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", fake_import)
+    scraper = TrabajandoScraper(keywords=["Químico Farmacéutico"])
+    assert scraper.fetch() == []

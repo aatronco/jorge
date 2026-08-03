@@ -4,10 +4,11 @@ import responses as responses_lib
 from scrapers.empleospublicos import EmpleosPublicosScraper
 
 FIXTURE = (Path(__file__).parent / "fixtures" / "empleospublicos_sample.html").read_text(encoding="utf-8")
+KEYWORDS = ["Químico Farmacéutico", "Farmacéutico Regente"]
 
 
 def test_parse_filtra_qf():
-    scraper = EmpleosPublicosScraper()
+    scraper = EmpleosPublicosScraper(keywords=KEYWORDS)
     ofertas = scraper._parse_html(FIXTURE)
     # fixture: 2 cards con "químico farmacéutico" en título, 1 card "médico cirujano" excluida
     assert len(ofertas) == 2
@@ -16,14 +17,14 @@ def test_parse_filtra_qf():
 
 
 def test_parse_excluye_no_qf():
-    scraper = EmpleosPublicosScraper()
+    scraper = EmpleosPublicosScraper(keywords=KEYWORDS)
     ofertas = scraper._parse_html(FIXTURE)
     titulos = [o["titulo"] for o in ofertas]
     assert not any("MÉDICO CIRUJANO" in t for t in titulos)
 
 
 def test_parse_estructura_oferta():
-    scraper = EmpleosPublicosScraper()
+    scraper = EmpleosPublicosScraper(keywords=KEYWORDS)
     ofertas = scraper._parse_html(FIXTURE)
     assert len(ofertas) > 0
     oferta = ofertas[0]
@@ -44,7 +45,7 @@ def test_fetch_hace_request():
     responses_lib.add(responses_lib.GET, url1, body=FIXTURE, status=200)
     responses_lib.add(responses_lib.GET, url2, body=FIXTURE, status=200)
     with patch("scrapers.empleospublicos.time.sleep"):
-        scraper = EmpleosPublicosScraper()
+        scraper = EmpleosPublicosScraper(keywords=KEYWORDS)
         ofertas = scraper.fetch()
     assert isinstance(ofertas, list)
     assert all(o["fuente"] == "empleospublicos.cl" for o in ofertas)

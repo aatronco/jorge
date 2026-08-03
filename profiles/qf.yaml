@@ -1,0 +1,26 @@
+# profiles/qf.yaml
+nombre: qf
+keywords:
+  - "Químico Farmacéutico"
+  - "QF"
+  - "Farmacéutico Regente"
+  - "Bioquímico"
+  - "Químico"
+  - "Farmacéutico"
+  - "Regente"
+scrapers:
+  - computrabajo
+  - indeed
+  - laborum
+  - trabajando
+  - empleospublicos
+  - bne
+  - portal_list:
+      portales:
+        - {nombre: "clinicaalemana", base_url: "https://clinicaalemana.trabajando.cl", fuente: "clinicaalemana.cl"}
+        - {nombre: "bupa", base_url: "https://bupa.trabajando.cl", fuente: "bupa.cl"}
+        - {nombre: "redsalud", base_url: "https://redsalud.trabajando.cl", fuente: "redsalud.cl"}
+        - {nombre: "banmedica", base_url: "https://banmedica.trabajando.cl", fuente: "banmedica.cl"}
+        - {nombre: "colmena", base_url: "https://colmena.trabajando.cl", fuente: "colmena.cl"}
+        - {nombre: "clinicasantamaria", base_url: "https://clinicasantamaria.trabajando.cl", fuente: "clinicasantamaria.cl"}
+        - {nombre: "salcobrand", base_url: "https://empresassb.trabajando.cl", fuente: "salcobrand.cl"}

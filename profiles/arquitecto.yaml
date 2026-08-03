@@ -1,0 +1,12 @@
+# profiles/arquitecto.yaml
+nombre: arquitecto
+keywords:
+  - "Arquitecto"
+  - "Arquitectura"
+scrapers:
+  - computrabajo
+  - indeed
+  - laborum
+  - trabajando
+  - empleospublicos
+  - bne
