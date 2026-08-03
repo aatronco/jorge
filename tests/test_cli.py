@@ -73,8 +73,13 @@ def test_cv_import_llama_a_cv_importar_cv(tmp_path, monkeypatch):
 
 def test_cv_tailor_sin_cv_importado_retorna_error(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
+    tailorear_mock = MagicMock()
+    monkeypatch.setattr(cli.cv, "tailorear_cv", tailorear_mock)
+
     exit_code = cli.main(["cv", "tailor", "--profile", "arquitecto", "https://x.cl/1"])
+
     assert exit_code == 1
+    tailorear_mock.assert_not_called()
 
 
 def test_cv_tailor_oferta_no_encontrada_retorna_error(tmp_path, monkeypatch):
@@ -82,9 +87,13 @@ def test_cv_tailor_oferta_no_encontrada_retorna_error(tmp_path, monkeypatch):
     cv_path = tmp_path / "data" / "arquitecto-cv.json"
     cv_path.parent.mkdir(parents=True)
     cv_path.write_text('{"basics": {}, "work": [], "education": [], "skills": []}', encoding="utf-8")
+    tailorear_mock = MagicMock()
+    monkeypatch.setattr(cli.cv, "tailorear_cv", tailorear_mock)
 
     exit_code = cli.main(["cv", "tailor", "--profile", "arquitecto", "https://no-existe.cl/1"])
+
     assert exit_code == 1
+    tailorear_mock.assert_not_called()
 
 
 def test_cv_import_error_de_api_retorna_error_claro(tmp_path, monkeypatch, capsys):
