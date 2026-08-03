@@ -1,8 +1,6 @@
-import time
-import requests
 from bs4 import BeautifulSoup
-from fake_useragent import UserAgent
-from scrapers.base import BaseScraper, is_region_metropolitana
+from scrapers.base import KeywordSearchScraper, is_region_metropolitana
+from scrapers.registry import register
 
 BASE_URL = "https://www.laborum.com/empleos"
 
@@ -15,7 +13,8 @@ SEL_FECHA = "span.fecha"
 SEL_DESC = "p.extracto"
 
 
-class LaborumScraper(BaseScraper):
+@register("laborum")
+class LaborumScraper(KeywordSearchScraper):
     def _parse_html(self, html: str) -> list[dict]:
         soup = BeautifulSoup(html, "lxml")
         ofertas = []

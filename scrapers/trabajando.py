@@ -1,8 +1,6 @@
-import time
-import requests
 from bs4 import BeautifulSoup
-from fake_useragent import UserAgent
-from scrapers.base import BaseScraper, is_region_metropolitana
+from scrapers.base import KeywordSearchScraper, is_region_metropolitana
+from scrapers.registry import register
 
 BASE_URL = "https://www.trabajando.cl/trabajo/buscar"
 REGION_PARAM = "Región Metropolitana"
@@ -15,7 +13,8 @@ SEL_FECHA = "span.fecha-publicacion"
 SEL_DESC = "p.descripcion-corta"
 
 
-class TrabajandoScraper(BaseScraper):
+@register("trabajando")
+class TrabajandoScraper(KeywordSearchScraper):
     def _parse_html(self, html: str) -> list[dict]:
         soup = BeautifulSoup(html, "lxml")
         ofertas = []

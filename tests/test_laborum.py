@@ -5,7 +5,7 @@ FIXTURE = (Path(__file__).parent / "fixtures" / "laborum_sample.html").read_text
 
 
 def test_parse_filtra_rm():
-    scraper = LaborumScraper()
+    scraper = LaborumScraper(keywords=["Químico Farmacéutico"])
     ofertas = scraper._parse_html(FIXTURE)
     assert len(ofertas) == 1
     assert "Recalcine" in ofertas[0]["empresa"]
@@ -13,13 +13,13 @@ def test_parse_filtra_rm():
 
 
 def test_parse_excluye_talca():
-    scraper = LaborumScraper()
+    scraper = LaborumScraper(keywords=["Químico Farmacéutico"])
     ofertas = scraper._parse_html(FIXTURE)
     assert not any("Talca" in o["ubicacion"] for o in ofertas)
 
 
 def test_parse_estructura_oferta():
-    scraper = LaborumScraper()
+    scraper = LaborumScraper(keywords=["Químico Farmacéutico"])
     ofertas = scraper._parse_html(FIXTURE)
     oferta = ofertas[0]
     assert set(oferta.keys()) == {
@@ -31,8 +31,7 @@ def test_parse_estructura_oferta():
 
 
 def test_fetch_retorna_vacio_sitio_bloqueado(capsys):
-    # laborum.com bloquea automatización; fetch() retorna [] con mensaje
-    scraper = LaborumScraper()
+    scraper = LaborumScraper(keywords=["Químico Farmacéutico"])
     ofertas = scraper.fetch()
     assert ofertas == []
     captured = capsys.readouterr()
