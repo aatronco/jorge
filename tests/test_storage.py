@@ -58,3 +58,21 @@ def test_listar_filtra_por_estado(tmp_path):
     nuevas = storage.listar(db, estado="nuevo")
     assert len(nuevas) == 1
     assert nuevas[0]["url"] == "https://a.cl/2"
+
+
+def test_obtener_por_url_encuentra_oferta(tmp_path):
+    db = tmp_path / "test.db"
+    oferta = {
+        "url": "https://a.cl/1", "titulo": "Arquitecto", "empresa": "X", "ubicacion": "Santiago",
+        "fecha_publicacion": "2026-04-01", "descripcion": "d", "fuente": "test.cl",
+    }
+    storage.guardar([oferta], db)
+    encontrada = storage.obtener_por_url(db, "https://a.cl/1")
+    assert encontrada is not None
+    assert encontrada["titulo"] == "Arquitecto"
+
+
+def test_obtener_por_url_retorna_none_si_no_existe(tmp_path):
+    db = tmp_path / "test.db"
+    storage.init_db(db)
+    assert storage.obtener_por_url(db, "https://no-existe.cl/1") is None
