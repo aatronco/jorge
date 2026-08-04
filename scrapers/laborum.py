@@ -35,10 +35,15 @@ class LaborumScraper(KeywordSearchScraper):
             ubicacion = ubicacion_el.get_text(strip=True) if ubicacion_el else ""
             if not is_region_metropolitana(ubicacion):
                 continue
+            # Solo algunas ofertas incluyen descripción en el listado (las
+            # "destacadas"/pagadas, aparentemente) — cuando existe, es el único
+            # <p> dentro del header. Si no está, se guarda "" como siempre.
+            desc_el = header.select_one("p")
+            descripcion = desc_el.get_text(strip=True) if desc_el else ""
             href = card.get("href", "")
             url = f"https://www.laborum.cl{href}" if href.startswith("/") else href
             ofertas.append(
-                self._make_oferta(titulo, empresa, ubicacion, fecha, "", url, "laborum.cl")
+                self._make_oferta(titulo, empresa, ubicacion, fecha, descripcion, url, "laborum.cl")
             )
         return ofertas
 

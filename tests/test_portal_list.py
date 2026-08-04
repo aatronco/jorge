@@ -45,6 +45,7 @@ def test_parse_estructura_oferta():
     assert oferta["url"] == BASE_URL + "/trabajo/6052722-quimico-a-farmaceutico-a"
     assert "Vitacura" in oferta["ubicacion"]
     assert oferta["fecha_publicacion"] == "Hace 3 días"
+    assert oferta["descripcion"] == "Se busca Químico/a Farmacéutico/a para farmacia interna de la clínica."
 
 
 def test_scraper_guarda_lista_de_portales():

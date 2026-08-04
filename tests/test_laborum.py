@@ -29,6 +29,7 @@ def test_parse_estructura_oferta():
     assert oferta["url"].startswith("https://www.laborum.cl")
     assert oferta["titulo"] == "Químico Farmacéutico"
     assert oferta["fecha_publicacion"] == "Publicado hace 2 horas"
+    assert oferta["descripcion"] == "Buscamos QF para área de producción en planta Santiago."
 
 
 def test_fetch_retorna_vacio_sin_botasaurus(monkeypatch):

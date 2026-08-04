@@ -14,6 +14,7 @@ SEL_TITULO = "h2 a"
 SEL_EMPRESA = "span.type"
 SEL_UBICACION = "span.location"
 SEL_FECHA = "span.date"
+SEL_DESC = "p.description"
 
 
 @register("trabajando")
@@ -36,8 +37,10 @@ class TrabajandoScraper(KeywordSearchScraper):
             fecha = fecha.get_text(strip=True) if fecha else ""
             if not is_region_metropolitana(ubicacion):
                 continue
+            desc_el = card.select_one(SEL_DESC)
+            descripcion = desc_el.get_text(strip=True) if desc_el else ""
             ofertas.append(
-                self._make_oferta(titulo, empresa, ubicacion, fecha, "", url, "trabajando.cl")
+                self._make_oferta(titulo, empresa, ubicacion, fecha, descripcion, url, "trabajando.cl")
             )
         return ofertas
 
