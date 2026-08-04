@@ -3,10 +3,6 @@ import json
 import subprocess
 from pathlib import Path
 
-import anthropic
-
-MODEL = "claude-sonnet-5"
-
 CV_SCHEMA = {
     "type": "object",
     "properties": {
@@ -66,50 +62,6 @@ CV_SCHEMA = {
     "required": ["basics", "work", "education", "skills"],
 }
 
-TAILOR_SCHEMA = {
-    "type": "object",
-    "properties": {
-        "orden_work": {
-            "type": "array",
-            "items": {"type": "integer"},
-            "description": "Índices de cv_base['work'], en el orden en que deberían aparecer (más relevante primero).",
-        },
-        "orden_skills": {
-            "type": "array",
-            "items": {"type": "integer"},
-            "description": "Índices de cv_base['skills'], en el orden en que deberían aparecer (más relevante primero).",
-        },
-        "summary": {
-            "type": "string",
-            "description": "Nuevo resumen profesional (basics.summary) adaptado a esta oferta específica.",
-        },
-    },
-    "required": ["orden_work", "orden_skills", "summary"],
-}
-
-
-def _client() -> anthropic.Anthropic:
-    return anthropic.Anthropic()
-
-
-def _tool_call(client, tool_name: str, tool_description: str, schema: dict, prompt: str) -> dict:
-    response = client.messages.create(
-        model=MODEL,
-        max_tokens=16000,
-        tools=[{"name": tool_name, "description": tool_description, "input_schema": schema}],
-        tool_choice={"type": "tool", "name": tool_name},
-        messages=[{"role": "user", "content": prompt}],
-    )
-    if response.stop_reason == "max_tokens":
-        raise ValueError(
-            "Claude no terminó la respuesta (truncada por max_tokens) — el CV/oferta "
-            "puede ser demasiado largo para procesar en una sola llamada."
-        )
-    for block in response.content:
-        if block.type == "tool_use":
-            return block.input
-    raise ValueError("Claude no devolvió una respuesta con tool_use")
-
 
 def _aplicar_orden(items: list, orden: list) -> list:
     """Reordena `items` según `orden` (lista de índices). Nunca cambia la
@@ -128,49 +80,28 @@ def _aplicar_orden(items: list, orden: list) -> list:
     return resultado
 
 
-def importar_cv(texto: str, perfil: str) -> dict:
-    client = _client()
-    prompt = (
-        "Estructura el siguiente CV en el formato JSON Resume estándar "
-        "(basics, work, education, skills). No inventes información que no esté "
-        "en el texto original.\n\n---\n\n" + texto
-    )
-    cv_data = _tool_call(
-        client, "estructurar_cv", "Estructura un CV en formato JSON Resume.", CV_SCHEMA, prompt
-    )
+def guardar_cv(cv_data: dict, perfil: str) -> None:
+    """Guarda un CV ya estructurado en formato JSON Resume (por Claude Code,
+    en la conversación) en data/<perfil>-cv.json. Valida que tenga las claves
+    top-level requeridas por CV_SCHEMA antes de escribir — nunca persiste un
+    CV incompleto."""
     faltantes = [clave for clave in CV_SCHEMA["required"] if clave not in cv_data]
     if faltantes:
-        raise ValueError(
-            f"La respuesta de Claude no tiene el formato esperado — faltan las claves: {faltantes}"
-        )
+        raise ValueError(f"El CV no tiene el formato esperado — faltan las claves: {faltantes}")
     path = Path("data") / f"{perfil}-cv.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(cv_data, ensure_ascii=False, indent=2), encoding="utf-8")
-    return cv_data
 
 
-def tailorear_cv(cv_base: dict, oferta: dict) -> dict:
-    client = _client()
-    prompt = (
-        "Este es un CV en formato JSON Resume:\n\n"
-        + json.dumps(cv_base, ensure_ascii=False)
-        + "\n\nEsta es la oferta de trabajo a la que se quiere postular:\n\n"
-        f"Título: {oferta.get('titulo', '')}\n"
-        f"Empresa: {oferta.get('empresa', '')}\n"
-        f"Descripción: {oferta.get('descripcion', '')}\n\n"
-        "Indica el orden en que deberían aparecer las entradas de work y skills "
-        "(por índice, más relevante primero para esta oferta) y escribe un resumen "
-        "profesional nuevo adaptado a esta oferta. No inventes experiencia, fechas "
-        "ni logros que no estén en el CV original — solo reordena y resume."
-    )
-    resultado = _tool_call(
-        client, "tailorear_cv", "Prioriza secciones de un CV para una oferta específica.", TAILOR_SCHEMA, prompt
-    )
-
+def aplicar_tailoring(cv_base: dict, orden_work: list, orden_skills: list, summary: str) -> dict:
+    """Aplica sobre una COPIA de cv_base el reordenamiento de work[]/skills[]
+    y el resumen nuevo — ya decididos por Claude Code en la conversación, no
+    por una llamada a una API. Nunca muta cv_base, nunca agrega/quita
+    entradas (solo reordena, vía _aplicar_orden)."""
     tailored = json.loads(json.dumps(cv_base))  # copia profunda, nunca muta cv_base
-    tailored["work"] = _aplicar_orden(tailored.get("work", []), resultado["orden_work"])
-    tailored["skills"] = _aplicar_orden(tailored.get("skills", []), resultado["orden_skills"])
-    tailored.setdefault("basics", {})["summary"] = resultado["summary"]
+    tailored["work"] = _aplicar_orden(tailored.get("work", []), orden_work)
+    tailored["skills"] = _aplicar_orden(tailored.get("skills", []), orden_skills)
+    tailored.setdefault("basics", {})["summary"] = summary
     return tailored
 
 

@@ -2,7 +2,6 @@ import copy
 import json
 import subprocess
 from pathlib import Path
-from unittest.mock import MagicMock
 
 import pytest
 
@@ -49,61 +48,37 @@ CV_EJEMPLO = {
     "skills": [{"name": "AutoCAD"}, {"name": "Revit"}],
 }
 
-OFERTA_EJEMPLO = {
-    "titulo": "Arquitecto de Aplicaciones", "empresa": "AFP Habitat", "ubicacion": "Providencia",
-    "descripcion": "Buscamos arquitecto senior con experiencia en sistemas de información.",
-    "url": "https://x.cl/1", "fuente": "laborum.cl",
-}
 
-
-def _mock_tool_use_response(payload: dict):
-    block = MagicMock()
-    block.type = "tool_use"
-    block.input = payload
-    response = MagicMock()
-    response.content = [block]
-    return response
-
-
-def test_importar_cv_llama_api_y_guarda(tmp_path, monkeypatch):
+def test_guardar_cv_escribe_archivo(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    fake_client = MagicMock()
-    fake_client.messages.create.return_value = _mock_tool_use_response(CV_EJEMPLO)
-    monkeypatch.setattr(cv, "_client", lambda: fake_client)
 
-    resultado = cv.importar_cv("Jorge Pérez, arquitecto...", "arquitecto")
+    cv.guardar_cv(CV_EJEMPLO, "arquitecto")
 
-    assert resultado == CV_EJEMPLO
     guardado = json.loads((tmp_path / "data" / "arquitecto-cv.json").read_text(encoding="utf-8"))
     assert guardado == CV_EJEMPLO
 
-    call_kwargs = fake_client.messages.create.call_args.kwargs
-    assert call_kwargs["model"] == cv.MODEL
-    assert call_kwargs["tool_choice"]["name"] == call_kwargs["tools"][0]["name"]
+
+def test_guardar_cv_rechaza_cv_incompleto(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    incompleto = {k: v for k, v in CV_EJEMPLO.items() if k != "work"}
+
+    with pytest.raises(ValueError, match="work"):
+        cv.guardar_cv(incompleto, "arquitecto")
+
+    assert not (tmp_path / "data" / "arquitecto-cv.json").exists()
 
 
-def test_tailorear_cv_no_muta_cv_base(monkeypatch):
-    fake_client = MagicMock()
-    fake_client.messages.create.return_value = _mock_tool_use_response(
-        {"orden_work": [1, 0], "orden_skills": [1, 0], "summary": "Resumen ajustado a esta oferta."}
-    )
-    monkeypatch.setattr(cv, "_client", lambda: fake_client)
-
+def test_aplicar_tailoring_no_muta_cv_base():
     original = copy.deepcopy(CV_EJEMPLO)
-    resultado = cv.tailorear_cv(CV_EJEMPLO, OFERTA_EJEMPLO)
+
+    resultado = cv.aplicar_tailoring(CV_EJEMPLO, [1, 0], [1, 0], "Resumen ajustado a esta oferta.")
 
     assert CV_EJEMPLO == original  # cv_base intacto
     assert resultado is not CV_EJEMPLO
 
 
-def test_tailorear_cv_no_comparte_referencias_anidadas(monkeypatch):
-    fake_client = MagicMock()
-    fake_client.messages.create.return_value = _mock_tool_use_response(
-        {"orden_work": [1, 0], "orden_skills": [1, 0], "summary": "Resumen ajustado a esta oferta."}
-    )
-    monkeypatch.setattr(cv, "_client", lambda: fake_client)
-
-    resultado = cv.tailorear_cv(CV_EJEMPLO, OFERTA_EJEMPLO)
+def test_aplicar_tailoring_no_comparte_referencias_anidadas():
+    resultado = cv.aplicar_tailoring(CV_EJEMPLO, [1, 0], [1, 0], "Resumen ajustado a esta oferta.")
 
     # Mutar el resultado no debe afectar CV_EJEMPLO — si compartieran referencias
     # anidadas (ej. una copia superficial), esta mutación se propagaría.
@@ -114,14 +89,8 @@ def test_tailorear_cv_no_comparte_referencias_anidadas(monkeypatch):
     assert CV_EJEMPLO["basics"]["summary"] != "MUTATED"
 
 
-def test_tailorear_cv_reordena_y_preserva_cantidad(monkeypatch):
-    fake_client = MagicMock()
-    fake_client.messages.create.return_value = _mock_tool_use_response(
-        {"orden_work": [1, 0], "orden_skills": [1, 0], "summary": "Resumen ajustado a esta oferta."}
-    )
-    monkeypatch.setattr(cv, "_client", lambda: fake_client)
-
-    resultado = cv.tailorear_cv(CV_EJEMPLO, OFERTA_EJEMPLO)
+def test_aplicar_tailoring_reordena_y_preserva_cantidad():
+    resultado = cv.aplicar_tailoring(CV_EJEMPLO, [1, 0], [1, 0], "Resumen ajustado a esta oferta.")
 
     assert len(resultado["work"]) == len(CV_EJEMPLO["work"])
     assert len(resultado["skills"]) == len(CV_EJEMPLO["skills"])
@@ -130,18 +99,11 @@ def test_tailorear_cv_reordena_y_preserva_cantidad(monkeypatch):
     assert resultado["basics"]["summary"] == "Resumen ajustado a esta oferta."
 
 
-def test_tailorear_cv_incluye_datos_de_la_oferta_en_el_prompt(monkeypatch):
-    fake_client = MagicMock()
-    fake_client.messages.create.return_value = _mock_tool_use_response(
-        {"orden_work": [], "orden_skills": [], "summary": "x"}
-    )
-    monkeypatch.setattr(cv, "_client", lambda: fake_client)
+def test_aplicar_tailoring_ordenes_vacios_mantiene_orden_original():
+    resultado = cv.aplicar_tailoring(CV_EJEMPLO, [], [], "x")
 
-    cv.tailorear_cv(CV_EJEMPLO, OFERTA_EJEMPLO)
-
-    prompt = fake_client.messages.create.call_args.kwargs["messages"][0]["content"]
-    assert "Arquitecto de Aplicaciones" in prompt
-    assert "sistemas de información" in prompt
+    assert [w["name"] for w in resultado["work"]] == [w["name"] for w in CV_EJEMPLO["work"]]
+    assert [s["name"] for s in resultado["skills"]] == [s["name"] for s in CV_EJEMPLO["skills"]]
 
 
 def test_id_oferta_es_estable_y_corto():
@@ -193,27 +155,3 @@ def test_renderizar_cv_error_si_resumed_falla(tmp_path, monkeypatch):
 
     with pytest.raises(RuntimeError, match="theme not found"):
         cv.renderizar_cv(tmp_path / "cv.json", tmp_path / "cv.pdf")
-
-
-def test_tool_call_lanza_error_si_respuesta_truncada(monkeypatch):
-    fake_client = MagicMock()
-    response = MagicMock()
-    response.stop_reason = "max_tokens"
-    response.content = []
-    fake_client.messages.create.return_value = response
-
-    with pytest.raises(ValueError, match="max_tokens"):
-        cv._tool_call(fake_client, "tool", "desc", {"type": "object"}, "prompt")
-
-
-def test_importar_cv_rechaza_respuesta_incompleta(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
-    incompleta = {k: v for k, v in CV_EJEMPLO.items() if k != "work"}
-    fake_client = MagicMock()
-    fake_client.messages.create.return_value = _mock_tool_use_response(incompleta)
-    monkeypatch.setattr(cv, "_client", lambda: fake_client)
-
-    with pytest.raises(ValueError, match="work"):
-        cv.importar_cv("Jorge Pérez, arquitecto...", "arquitecto")
-
-    assert not (tmp_path / "data" / "arquitecto-cv.json").exists()
