@@ -56,27 +56,53 @@ def cmd_mark(args) -> int:
     return 0
 
 
-def cmd_cv_import(args) -> int:
+def cmd_cv_save(args) -> int:
+    """Guarda un CV que Claude Code ya estructuró como JSON Resume durante la
+    conversación (no llama a ninguna API — el razonamiento ya está hecho)."""
     try:
-        texto = Path(args.archivo).read_text(encoding="utf-8")
-    except (FileNotFoundError, UnicodeDecodeError, OSError) as e:
+        cv_data = json.loads(Path(args.archivo).read_text(encoding="utf-8"))
+    except (FileNotFoundError, UnicodeDecodeError, OSError, json.JSONDecodeError) as e:
         console.print(f"[bold red]No se pudo leer el archivo {args.archivo!r}: {e}[/bold red]")
         return 1
     try:
-        cv.importar_cv(texto, args.profile)
-    except Exception as e:
-        console.print(f"[bold red]Error al llamar a la API de Claude: {e}[/bold red]")
+        cv.guardar_cv(cv_data, args.profile)
+    except ValueError as e:
+        console.print(f"[bold red]{e}[/bold red]")
         return 1
-    console.print(f"[bold green]✓ CV importado para el perfil '{args.profile}'[/bold green]")
+    console.print(f"[bold green]✓ CV guardado para el perfil '{args.profile}'[/bold green]")
     return 0
 
 
+def cmd_cv_show_offer(args) -> int:
+    """Imprime los datos de una oferta guardada, para que Claude Code los lea
+    y razone el tailoring (orden + resumen) antes de correr 'cv tailor'."""
+    oferta = storage.obtener_por_url(_db_path(args.profile), args.url)
+    if not oferta:
+        console.print(f"[bold red]No se encontró ninguna oferta con url {args.url!r}[/bold red]")
+        return 1
+    console.print(f"[bold]Título:[/bold] {oferta.get('titulo', '')}")
+    console.print(f"[bold]Empresa:[/bold] {oferta.get('empresa', '')}")
+    console.print(f"[bold]Ubicación:[/bold] {oferta.get('ubicacion', '')}")
+    console.print(f"[bold]Descripción:[/bold]\n{oferta.get('descripcion', '')}")
+    return 0
+
+
+def _parse_orden(valor: str) -> list:
+    valor = valor.strip()
+    if not valor:
+        return []
+    return [int(x) for x in valor.split(",")]
+
+
 def cmd_cv_tailor(args) -> int:
+    """Aplica un tailoring ya decidido por Claude Code (orden de work/skills +
+    resumen nuevo, pasados como argumentos) y renderiza el PDF. No llama a
+    ninguna API — el razonamiento ya está hecho antes de correr esto."""
     cv_path = Path("data") / f"{args.profile}-cv.json"
     if not cv_path.exists():
         console.print(
-            f"[bold red]No hay CV importado para '{args.profile}'. "
-            f"Corre 'cli.py cv import <archivo> --profile {args.profile}' primero.[/bold red]"
+            f"[bold red]No hay CV guardado para '{args.profile}'. "
+            f"Corre 'cli.py cv save <archivo.json> --profile {args.profile}' primero.[/bold red]"
         )
         return 1
     cv_base = json.loads(cv_path.read_text(encoding="utf-8"))
@@ -87,10 +113,16 @@ def cmd_cv_tailor(args) -> int:
         return 1
 
     try:
-        tailored = cv.tailorear_cv(cv_base, oferta)
-    except Exception as e:
-        console.print(f"[bold red]Error al llamar a la API de Claude: {e}[/bold red]")
+        orden_work = _parse_orden(args.orden_work)
+        orden_skills = _parse_orden(args.orden_skills)
+    except ValueError as e:
+        console.print(
+            f"[bold red]--orden-work/--orden-skills debe ser una lista de índices "
+            f"separados por coma: {e}[/bold red]"
+        )
         return 1
+
+    tailored = cv.aplicar_tailoring(cv_base, orden_work, orden_skills, args.summary)
     oferta_id = cv.id_oferta(args.url)
     tailored_dir = Path("data") / f"{args.profile}-tailored"
     tailored_dir.mkdir(parents=True, exist_ok=True)
@@ -128,14 +160,22 @@ def main(argv=None) -> int:
     p_cv = sub.add_parser("cv")
     cv_sub = p_cv.add_subparsers(dest="cv_comando", required=True)
 
-    p_cv_import = cv_sub.add_parser("import")
-    p_cv_import.add_argument("archivo")
-    p_cv_import.add_argument("--profile", required=True)
-    p_cv_import.set_defaults(func=cmd_cv_import)
+    p_cv_save = cv_sub.add_parser("save")
+    p_cv_save.add_argument("archivo")
+    p_cv_save.add_argument("--profile", required=True)
+    p_cv_save.set_defaults(func=cmd_cv_save)
+
+    p_cv_show = cv_sub.add_parser("show-offer")
+    p_cv_show.add_argument("--profile", required=True)
+    p_cv_show.add_argument("url")
+    p_cv_show.set_defaults(func=cmd_cv_show_offer)
 
     p_cv_tailor = cv_sub.add_parser("tailor")
     p_cv_tailor.add_argument("--profile", required=True)
     p_cv_tailor.add_argument("url")
+    p_cv_tailor.add_argument("--summary", required=True)
+    p_cv_tailor.add_argument("--orden-work", default="", dest="orden_work")
+    p_cv_tailor.add_argument("--orden-skills", default="", dest="orden_skills")
     p_cv_tailor.set_defaults(func=cmd_cv_tailor)
 
     args = parser.parse_args(argv)

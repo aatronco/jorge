@@ -1,3 +1,4 @@
+import json
 from unittest.mock import MagicMock
 
 import storage
@@ -7,6 +8,8 @@ OFERTA_1 = {
     "url": "https://a.cl/1", "titulo": "QF", "empresa": "X", "ubicacion": "Santiago",
     "fecha_publicacion": "2026-04-01", "descripcion": "d", "fuente": "test.cl",
 }
+
+CV_EJEMPLO = {"basics": {"name": "Jorge", "summary": "original"}, "work": [], "education": [], "skills": []}
 
 
 def test_mark_url_existente_actualiza_estado(tmp_path, monkeypatch):
@@ -54,27 +57,22 @@ def test_list_filtra_por_status(tmp_path, monkeypatch, capsys):
     assert "QF" not in out.replace("OtraOferta", "")
 
 
-def test_cv_import_llama_a_cv_importar_cv(tmp_path, monkeypatch):
+def test_cv_save_guarda_cv_estructurado(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    fake_importar = MagicMock(return_value={"basics": {"summary": "x"}})
-    monkeypatch.setattr(cli.cv, "importar_cv", fake_importar)
+    cv_file = tmp_path / "cv-estructurado.json"
+    cv_file.write_text(json.dumps(CV_EJEMPLO), encoding="utf-8")
 
-    cv_file = tmp_path / "mi-cv.txt"
-    cv_file.write_text("Jorge Pérez, arquitecto...", encoding="utf-8")
-
-    exit_code = cli.main(["cv", "import", str(cv_file), "--profile", "arquitecto"])
+    exit_code = cli.main(["cv", "save", str(cv_file), "--profile", "arquitecto"])
 
     assert exit_code == 0
-    fake_importar.assert_called_once()
-    args, kwargs = fake_importar.call_args
-    assert args[0] == "Jorge Pérez, arquitecto..."
-    assert args[1] == "arquitecto"
+    guardado = json.loads((tmp_path / "data" / "arquitecto-cv.json").read_text(encoding="utf-8"))
+    assert guardado == CV_EJEMPLO
 
 
-def test_cv_import_archivo_inexistente_retorna_error_claro(tmp_path, monkeypatch, capsys):
+def test_cv_save_archivo_inexistente_retorna_error_claro(tmp_path, monkeypatch, capsys):
     monkeypatch.chdir(tmp_path)
 
-    exit_code = cli.main(["cv", "import", "no-existe.txt", "--profile", "arquitecto"])
+    exit_code = cli.main(["cv", "save", "no-existe.json", "--profile", "arquitecto"])
 
     assert exit_code == 1
     out = capsys.readouterr().out
@@ -82,50 +80,103 @@ def test_cv_import_archivo_inexistente_retorna_error_claro(tmp_path, monkeypatch
     assert "Traceback" not in out
 
 
-def test_cv_tailor_sin_cv_importado_retorna_error(tmp_path, monkeypatch):
+def test_cv_save_json_invalido_retorna_error_claro(tmp_path, monkeypatch, capsys):
     monkeypatch.chdir(tmp_path)
-    tailorear_mock = MagicMock()
-    monkeypatch.setattr(cli.cv, "tailorear_cv", tailorear_mock)
+    cv_file = tmp_path / "roto.json"
+    cv_file.write_text("{esto no es json", encoding="utf-8")
 
-    exit_code = cli.main(["cv", "tailor", "--profile", "arquitecto", "https://x.cl/1"])
+    exit_code = cli.main(["cv", "save", str(cv_file), "--profile", "arquitecto"])
 
     assert exit_code == 1
-    tailorear_mock.assert_not_called()
+    assert "No se pudo leer" in capsys.readouterr().out
+
+
+def test_cv_save_cv_incompleto_retorna_error_claro(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    incompleto = {k: v for k, v in CV_EJEMPLO.items() if k != "work"}
+    cv_file = tmp_path / "incompleto.json"
+    cv_file.write_text(json.dumps(incompleto), encoding="utf-8")
+
+    exit_code = cli.main(["cv", "save", str(cv_file), "--profile", "arquitecto"])
+
+    assert exit_code == 1
+    assert "work" in capsys.readouterr().out
+    assert not (tmp_path / "data" / "arquitecto-cv.json").exists()
+
+
+def test_cv_show_offer_imprime_datos(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    db = tmp_path / "data" / "arquitecto.db"
+    storage.guardar([OFERTA_1], db)
+
+    exit_code = cli.main(["cv", "show-offer", "--profile", "arquitecto", "https://a.cl/1"])
+
+    assert exit_code == 0
+    out = capsys.readouterr().out
+    assert "QF" in out
+    assert "Santiago" in out
+
+
+def test_cv_show_offer_no_encontrada_retorna_error(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    storage.init_db(tmp_path / "data" / "arquitecto.db")
+
+    exit_code = cli.main(["cv", "show-offer", "--profile", "arquitecto", "https://no-existe.cl/1"])
+
+    assert exit_code == 1
+
+
+def test_cv_tailor_sin_cv_guardado_retorna_error(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    fake_render = MagicMock()
+    monkeypatch.setattr(cli.cv, "renderizar_cv", fake_render)
+
+    exit_code = cli.main([
+        "cv", "tailor", "--profile", "arquitecto", "https://x.cl/1", "--summary", "x",
+    ])
+
+    assert exit_code == 1
+    fake_render.assert_not_called()
 
 
 def test_cv_tailor_oferta_no_encontrada_retorna_error(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     cv_path = tmp_path / "data" / "arquitecto-cv.json"
     cv_path.parent.mkdir(parents=True)
-    cv_path.write_text('{"basics": {}, "work": [], "education": [], "skills": []}', encoding="utf-8")
-    tailorear_mock = MagicMock()
-    monkeypatch.setattr(cli.cv, "tailorear_cv", tailorear_mock)
+    cv_path.write_text(json.dumps(CV_EJEMPLO), encoding="utf-8")
+    fake_render = MagicMock()
+    monkeypatch.setattr(cli.cv, "renderizar_cv", fake_render)
 
-    exit_code = cli.main(["cv", "tailor", "--profile", "arquitecto", "https://no-existe.cl/1"])
+    exit_code = cli.main([
+        "cv", "tailor", "--profile", "arquitecto", "https://no-existe.cl/1", "--summary", "x",
+    ])
 
     assert exit_code == 1
-    tailorear_mock.assert_not_called()
+    fake_render.assert_not_called()
 
 
-def test_cv_import_error_de_api_retorna_error_claro(tmp_path, monkeypatch, capsys):
+def test_cv_tailor_orden_invalido_retorna_error_claro(tmp_path, monkeypatch, capsys):
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(cli.cv, "importar_cv", MagicMock(side_effect=RuntimeError("401 unauthorized")))
-    cv_file = tmp_path / "mi-cv.txt"
-    cv_file.write_text("texto", encoding="utf-8")
+    cv_path = tmp_path / "data" / "arquitecto-cv.json"
+    cv_path.parent.mkdir(parents=True)
+    cv_path.write_text(json.dumps(CV_EJEMPLO), encoding="utf-8")
+    db_path = tmp_path / "data" / "arquitecto.db"
+    storage.guardar([{**OFERTA_1, "url": "https://x.cl/1"}], db_path)
 
-    exit_code = cli.main(["cv", "import", str(cv_file), "--profile", "arquitecto"])
+    exit_code = cli.main([
+        "cv", "tailor", "--profile", "arquitecto", "https://x.cl/1",
+        "--summary", "x", "--orden-work", "no-es-un-numero",
+    ])
 
     assert exit_code == 1
-    assert "API" in capsys.readouterr().out
+    assert "orden-work" in capsys.readouterr().out
 
 
 def test_cv_tailor_flujo_completo(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    cv_base = {"basics": {"summary": "original"}, "work": [], "education": [], "skills": []}
     cv_path = tmp_path / "data" / "arquitecto-cv.json"
     cv_path.parent.mkdir(parents=True)
-    import json
-    cv_path.write_text(json.dumps(cv_base), encoding="utf-8")
+    cv_path.write_text(json.dumps(CV_EJEMPLO), encoding="utf-8")
 
     db_path = tmp_path / "data" / "arquitecto.db"
     storage.guardar(
@@ -134,12 +185,13 @@ def test_cv_tailor_flujo_completo(tmp_path, monkeypatch):
         db_path,
     )
 
-    tailored = {"basics": {"summary": "ajustado"}, "work": [], "education": [], "skills": []}
-    monkeypatch.setattr(cli.cv, "tailorear_cv", MagicMock(return_value=tailored))
     fake_render = MagicMock()
     monkeypatch.setattr(cli.cv, "renderizar_cv", fake_render)
 
-    exit_code = cli.main(["cv", "tailor", "--profile", "arquitecto", "https://x.cl/1"])
+    exit_code = cli.main([
+        "cv", "tailor", "--profile", "arquitecto", "https://x.cl/1",
+        "--summary", "ajustado", "--orden-work", "", "--orden-skills", "",
+    ])
 
     assert exit_code == 0
     fake_render.assert_called_once()
