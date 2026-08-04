@@ -7,6 +7,7 @@ SEL_TITULO    = "h2 a"
 SEL_EMPRESA   = "span.type"
 SEL_UBICACION = "span.location"
 SEL_FECHA     = "div.date"
+SEL_DESC      = "p.description"
 
 
 @register("portal_list")
@@ -37,8 +38,10 @@ class PortalListScraper(_PortalListScraperBase):
                 continue
             fecha_el = card.select_one(SEL_FECHA)
             fecha = fecha_el.get_text(strip=True) if fecha_el else ""
+            desc_el = card.select_one(SEL_DESC)
+            descripcion = desc_el.get_text(strip=True) if desc_el else ""
             ofertas.append(
-                self._make_oferta(titulo, empresa, ubicacion, fecha, "", url, fuente)
+                self._make_oferta(titulo, empresa, ubicacion, fecha, descripcion, url, fuente)
             )
         return ofertas
 

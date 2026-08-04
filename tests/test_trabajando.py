@@ -30,6 +30,7 @@ def test_parse_estructura_oferta():
     assert oferta["fuente"] == "trabajando.cl"
     assert oferta["url"].startswith("https://www.trabajando.cl")
     assert oferta["titulo"] == "Químico Farmacéutico Regente"
+    assert oferta["descripcion"] == "Se busca QF regente para farmacia en zona oriente."
 
 
 def test_fetch_retorna_vacio_sin_botasaurus(monkeypatch):
